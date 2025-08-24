@@ -72,14 +72,17 @@ export default function Sidebar({ sidebarOpen, setSidebarOpen }) {
                   </div>
                 </Transition.Child>
                 <div className="flex grow flex-col gap-y-5 overflow-y-auto bg-white px-6 pb-4">
-                  <div className="flex h-16 shrink-0 items-center">
-                    <div className="flex items-center space-x-3">
-                      <div className="h-8 w-8 bg-gradient-to-r from-primary-600 to-mint-500 rounded-lg flex items-center justify-center">
-                        <ChefHatIcon className="h-5 w-5 text-white" />
-                      </div>
-                      <span className="text-xl font-display font-bold text-gray-900">Kenny's Meals</span>
-                    </div>
-                  </div>
+                            <div className="flex h-16 shrink-0 items-center">
+            <div className="flex flex-col items-start space-y-1">
+              <div className="flex items-center space-x-3">
+                <div className="h-8 w-8 bg-gradient-to-r from-primary-600 to-mint-500 rounded-lg flex items-center justify-center">
+                  <ChefHatIcon className="h-5 w-5 text-white" />
+                </div>
+                <span className="text-xl font-display font-bold text-gray-900">Kenny's Analytics Hub</span>
+              </div>
+              <p className="text-sm text-gray-600 ml-11">Advanced Square POS Analytics • Real-time Dashboard</p>
+            </div>
+          </div>
                   <nav className="flex flex-1 flex-col">
                     <ul role="list" className="flex flex-1 flex-col gap-y-7">
                       <li>
@@ -121,14 +124,17 @@ export default function Sidebar({ sidebarOpen, setSidebarOpen }) {
       </Transition.Root>
 
       {/* Static sidebar for desktop */}
-      <div className="hidden lg:fixed lg:inset-y-0 lg:z-50 lg:flex lg:w-72 lg:flex-col">
+      <div className="hidden lg:fixed lg:inset-y-0 lg:z-50 lg:flex lg:w-64 lg:flex-col">
         <div className="flex grow flex-col gap-y-5 overflow-y-auto border-r border-gray-200 bg-white px-6 pb-4">
           <div className="flex h-16 shrink-0 items-center">
-            <div className="flex items-center space-x-3">
-              <div className="h-10 w-10 bg-gradient-to-r from-primary-600 to-mint-500 rounded-xl flex items-center justify-center">
-                <ChefHatIcon className="h-6 w-6 text-white" />
+            <div className="flex flex-col items-start space-y-1">
+              <div className="flex items-center space-x-3">
+                <div className="h-10 w-10 bg-gradient-to-r from-primary-600 to-mint-500 rounded-xl flex items-center justify-center">
+                  <ChefHatIcon className="h-6 w-6 text-white" />
+                </div>
+                <span className="text-2xl font-display font-bold text-gray-900">Kenny's Analytics Hub</span>
               </div>
-              <span className="text-2xl font-display font-bold text-gray-900">Kenny's Meals</span>
+              <p className="text-sm text-gray-600 ml-12">Advanced Square POS Analytics • Real-time Dashboard</p>
             </div>
           </div>
           <nav className="flex flex-1 flex-col">

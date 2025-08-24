@@ -20,7 +20,7 @@ export default function Dashboard() {
       <Sidebar sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
 
       {/* Main content */}
-      <div className="lg:pl-72">
+      <div className="lg:pl-64">
         {/* Header */}
         <Header setSidebarOpen={setSidebarOpen} />
 

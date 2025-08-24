@@ -1,7 +1,15 @@
+import dotenv from "dotenv"
+dotenv.config()
+
 import express from "express"
 import axios from "axios"
 
 const router = express.Router()
+
+// Debug: Log environment variables (mask sensitive info)
+console.log("SQUARE_ACCESS_TOKEN:", process.env.SQUARE_ACCESS_TOKEN);
+console.log("SQUARE_ENVIRONMENT:", process.env.SQUARE_ENVIRONMENT);
+console.log("SQUARE_LOCATION_ID:", process.env.SQUARE_LOCATION_ID);
 
 // Square API configuration
 const SQUARE_BASE_URL = process.env.SQUARE_ENVIRONMENT === "production" 
@@ -16,23 +24,24 @@ const squareHeaders = {
 
 // Helper function to get location ID
 async function getLocationId() {
-  if (!process.env.SQUARE_ACCESS_TOKEN || process.env.SQUARE_ACCESS_TOKEN === 'your_square_access_token_here') {
-    return null
+  // Prefer explicit location ID from env
+  if (process.env.SQUARE_LOCATION_ID && process.env.SQUARE_LOCATION_ID.trim() !== '') {
+    return process.env.SQUARE_LOCATION_ID;
   }
-
+  if (!process.env.SQUARE_ACCESS_TOKEN || process.env.SQUARE_ACCESS_TOKEN === 'your_square_access_token_here') {
+    return null;
+  }
   try {
     const response = await axios.get(
       `${SQUARE_BASE_URL}/v2/locations`,
       { headers: squareHeaders }
-    )
-    
-    const locations = response.data.locations || []
-    // Return the first active location
-    const activeLocation = locations.find(location => location.status === 'ACTIVE')
-    return activeLocation ? activeLocation.id : (locations[0]?.id || null)
+    );
+    const locations = response.data.locations || [];
+    const activeLocation = locations.find(location => location.status === 'ACTIVE');
+    return activeLocation ? activeLocation.id : (locations[0]?.id || null);
   } catch (error) {
-    console.error("Error fetching locations:", error.response?.data || error.message)
-    return null
+    console.error("Error fetching locations:", error.response?.data || error.message);
+    return null;
   }
 }
 
@@ -66,7 +75,7 @@ router.get("/locations", async (req, res) => {
       })),
     })
   } catch (error) {
-    console.error("Square Locations Error:", error.response?.data || error.message)
+    console.error("Square Locations Error:", error); // log full error object
     res.json({
       success: false,
       error: "Failed to fetch locations",
@@ -77,6 +86,10 @@ router.get("/locations", async (req, res) => {
 
 // Get dashboard KPIs
 router.get("/kpis", async (req, res) => {
+  // Debug log for env vars and locationId
+  console.log("SQUARE_ACCESS_TOKEN:", process.env.SQUARE_ACCESS_TOKEN?.slice(0,8), "... (hidden)");
+  console.log("SQUARE_ENVIRONMENT:", process.env.SQUARE_ENVIRONMENT);
+  console.log("SQUARE_LOCATION_ID:", process.env.SQUARE_LOCATION_ID);
   try {
     const { startDate, endDate } = req.query
     let locationId = req.query.locationId
@@ -111,81 +124,100 @@ router.get("/kpis", async (req, res) => {
       })
     }
 
-    // Search for orders in the specified time range
-    const searchRequest = {
-      location_ids: [locationId],
-      query: {
-        filter: {
-          date_time_filter: {
-            created_at: {
-              start_at: beginTime,
-              end_at: endTime,
+    // Pagination logic to get all orders for KPIs
+    let allOrders = []
+    let cursor = null
+    const maxPerPage = 500
+
+    do {
+      const searchRequest = {
+        location_ids: [locationId],
+        query: {
+          filter: {
+            date_time_filter: {
+              created_at: {
+                start_at: beginTime,
+                end_at: endTime,
+              },
+            },
+            state_filter: {
+              states: ["COMPLETED"],
             },
           },
-          state_filter: {
-            states: ["COMPLETED"],
-          },
         },
-      },
-    }
+        limit: maxPerPage,
+        ...(cursor ? { cursor } : {}),
+      }
 
-    const ordersResponse = await axios.post(
-      `${SQUARE_BASE_URL}/v2/orders/search`,
-      searchRequest,
-      { headers: squareHeaders }
-    )
+      const ordersResponse = await axios.post(
+        `${SQUARE_BASE_URL}/v2/orders/search`,
+        searchRequest,
+        { headers: squareHeaders }
+      )
 
-    const orders = ordersResponse.data.orders || []
+      const orders = ordersResponse.data.orders || []
+      allOrders = allOrders.concat(orders)
+      cursor = ordersResponse.data.cursor
+    } while (cursor)
 
-    // Calculate KPIs from real order data
-    const totalRevenue = orders.reduce((sum, order) => {
+    // Calculate KPIs from all real order data
+    const totalRevenue = allOrders.reduce((sum, order) => {
       return sum + (order.total_money?.amount || 0)
     }, 0) / 100 // Convert from cents to dollars
 
-    const totalOrders = orders.length
+    const totalOrders = allOrders.length
     const averageOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0
 
     // Get unique customers
     const uniqueCustomers = new Set(
-      orders
+      allOrders
         .filter(order => order.customer_id)
         .map(order => order.customer_id)
     ).size
 
-    // For comparison, get previous period data
+    // For comparison, get previous period data (also paginated)
     const periodDuration = endDateTime - startDateTime
     const prevEndTime = new Date(startDateTime.getTime()).toISOString()
     const prevStartTime = new Date(startDateTime.getTime() - periodDuration).toISOString()
 
-    const prevSearchRequest = {
-      ...searchRequest,
-      query: {
-        ...searchRequest.query,
-        filter: {
-          ...searchRequest.query.filter,
-          date_time_filter: {
-            created_at: {
-              start_at: prevStartTime,
-              end_at: prevEndTime,
+    let prevAllOrders = []
+    let prevCursor = null
+    do {
+      const prevSearchRequest = {
+        location_ids: [locationId],
+        query: {
+          filter: {
+            date_time_filter: {
+              created_at: {
+                start_at: prevStartTime,
+                end_at: prevEndTime,
+              },
+            },
+            state_filter: {
+              states: ["COMPLETED"],
             },
           },
         },
-      },
-    }
+        limit: maxPerPage,
+        ...(prevCursor ? { cursor: prevCursor } : {}),
+      }
 
-    const prevOrdersResponse = await axios.post(
-      `${SQUARE_BASE_URL}/v2/orders/search`,
-      prevSearchRequest,
-      { headers: squareHeaders }
-    )
+      const prevOrdersResponse = await axios.post(
+        `${SQUARE_BASE_URL}/v2/orders/search`,
+        prevSearchRequest,
+        { headers: squareHeaders }
+      )
 
-    const prevOrders = prevOrdersResponse.data.orders || []
+      const prevOrders = prevOrdersResponse.data.orders || []
+      prevAllOrders = prevAllOrders.concat(prevOrders)
+      prevCursor = prevOrdersResponse.data.cursor
+    } while (prevCursor)
 
-    const prevRevenue = prevOrders.reduce((sum, order) => {
+    const prevRevenue = prevAllOrders.reduce((sum, order) => {
       return sum + (order.total_money?.amount || 0)
     }, 0) / 100
 
-    const prevOrderCount = prevOrders.length
+    const prevOrderCount = prevAllOrders.length
     const prevAverageOrderValue = prevOrderCount > 0 ? prevRevenue / prevOrderCount : 0
 
     // Calculate percentage changes
@@ -273,38 +305,58 @@ router.get("/orders", async (req, res) => {
       })
     }
 
-    const searchRequest = {
-      location_ids: [locationId],
-      query: {
-        filter: {
-          date_time_filter: {
-            created_at: {
-              start_at: beginTime,
-              end_at: endTime,
+    // Pagination logic to get all orders
+    let allOrders = []
+    let cursor = null
+    let totalFetched = 0
+    const maxPerPage = 500
+
+    do {
+      const searchRequest = {
+        location_ids: [locationId],
+        query: {
+          filter: {
+            date_time_filter: {
+              created_at: {
+                start_at: beginTime,
+                end_at: endTime,
+              },
+            },
+            state_filter: {
+              states: ["COMPLETED", "OPEN"],
             },
           },
-          state_filter: {
-            states: ["COMPLETED", "OPEN"],
+          sort: {
+            sort_field: "CREATED_AT",
+            sort_order: "DESC",
           },
         },
-        sort: {
-          sort_field: "CREATED_AT",
-          sort_order: "DESC",
-        },
-      },
-      limit: parseInt(limit),
-    }
+        limit: maxPerPage,
+        ...(cursor ? { cursor } : {}),
+      }
 
-    const ordersResponse = await axios.post(
-      `${SQUARE_BASE_URL}/v2/orders/search`,
-      searchRequest,
-      { headers: squareHeaders }
-    )
+      const ordersResponse = await axios.post(
+        `${SQUARE_BASE_URL}/v2/orders/search`,
+        searchRequest,
+        { headers: squareHeaders }
+      )
 
-    const orders = ordersResponse.data.orders || []
+      const orders = ordersResponse.data.orders || []
+      allOrders = allOrders.concat(orders)
+      cursor = ordersResponse.data.cursor
+      totalFetched += orders.length
+
+      // If a limit is set in the query, stop when reached
+      if (limit && allOrders.length >= parseInt(limit)) {
+        break
+      }
+    } while (cursor)
+
+    // If a limit is set, only return up to that many orders for display
+    const displayOrders = limit ? allOrders.slice(0, parseInt(limit)) : allOrders
 
     // Transform Square orders to our dashboard format
-    const transformedOrders = orders.map(order => ({
+    const transformedOrders = displayOrders.map(order => ({
       id: order.id,
       amount: (order.total_money?.amount || 0) / 100, // Convert from cents
       status: order.state?.toLowerCase() || 'pending',
@@ -316,6 +368,14 @@ router.get("/orders", async (req, res) => {
         price: (item.total_money?.amount || 0) / 100,
       })) || [],
       location: order.location_id,
+      // For frontend compatibility:
+      createdAt: order.created_at,
+      lineItems: order.line_items?.map(item => ({
+        name: item.name || 'Unknown Item',
+        quantity: parseInt(item.quantity) || 1,
+      })) || [],
+      totalMoney: order.total_money,
+      state: order.state,
     }))
 
     res.json({
@@ -323,7 +383,7 @@ router.get("/orders", async (req, res) => {
       data: transformedOrders,
       period: { startDate: beginTime, endDate: endTime },
       locationId,
-      totalOrders: transformedOrders.length,
+      totalOrders: allOrders.length,
     })
   } catch (error) {
     console.error("Square Orders Error:", error.response?.data || error.message)
@@ -338,7 +398,7 @@ router.get("/orders", async (req, res) => {
   }
 })
 
-// Get menu items performance
+// Get menu items performance (mock)
 router.get("/menu-items", async (req, res) => {
   try {
     const mockMenuItems = [
@@ -363,7 +423,7 @@ router.get("/menu-items", async (req, res) => {
   }
 })
 
-// Get revenue analytics
+// Get revenue analytics (mock)
 router.get("/analytics/revenue", async (req, res) => {
   try {
     const { period = "7d" } = req.query
@@ -390,4 +450,5 @@ router.get("/analytics/revenue", async (req, res) => {
   }
 })
 
-export default router
+
+export default router;

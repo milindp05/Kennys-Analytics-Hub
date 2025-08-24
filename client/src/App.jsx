@@ -110,34 +110,50 @@ function DashboardPage() {
   const [monthlyTrends, setMonthlyTrends] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
+  const [selectedLocation, setSelectedLocation] = useState("LNBR73NZB7NGD") // Default: Lawrence
+  const [startDate, setStartDate] = useState(() => {
+    const d = new Date()
+    d.setDate(d.getDate() - 30)
+    return d.toISOString().slice(0, 10)
+  })
+  const [endDate, setEndDate] = useState(() => {
+    const d = new Date()
+    return d.toISOString().slice(0, 10)
+  })
+  const [totalOrdersCount, setTotalOrdersCount] = useState(0)
+  const [activeSection, setActiveSection] = useState("dashboard") // "dashboard", "instagram", "settings"
+
+  // Add locations mapping
+  const locations = [
+    { name: "Lawrence", id: "LNBR73NZB7NGD" },
+    { name: "Marlton", id: "LHRWZFV9E20FD" },
+    { name: "Newtown", id: "LDWVB35FA7CHM" },
+  ]
 
   useEffect(() => {
     fetchSquareData()
-  }, [])
+    // eslint-disable-next-line
+  }, [selectedLocation, startDate, endDate]) // refetch when location changes
 
   const fetchSquareData = async () => {
     try {
       setLoading(true)
-      
-      // Fetch KPIs from Square API
-      const kpiResponse = await fetch('http://localhost:5000/api/square/kpis')
+      setError("")
+      // Pass locationId, startDate, endDate as query params
+      const kpiResponse = await fetch(
+        `http://localhost:5000/api/square/kpis?locationId=${selectedLocation}&startDate=${startDate}&endDate=${endDate}`
+      )
       const kpiData = await kpiResponse.json()
-      
-      // Fetch recent orders
-      const ordersResponse = await fetch('http://localhost:5000/api/square/orders?limit=10')
+      const ordersResponse = await fetch(
+        `http://localhost:5000/api/square/orders?limit=10&locationId=${selectedLocation}&startDate=${startDate}&endDate=${endDate}`
+      )
       const ordersData = await ordersResponse.json()
-      
-      if (kpiData.success) {
-        setKpis(kpiData.data)
-      }
-      
+      if (kpiData.success) setKpis(kpiData.data)
       if (ordersData.success) {
         setOrders(ordersData.data)
+        setTotalOrdersCount(ordersData.totalOrders || ordersData.data.length)
       }
-
-      // Generate mock analytics data (in real app, these would be additional API endpoints)
       generateMockAnalytics()
-      
     } catch (error) {
       console.error('Error fetching Square data:', error)
       setError('Failed to load Square data. Check your API configuration.')
@@ -233,336 +249,443 @@ function DashboardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
-      {/* Advanced Navigation */}
-      <nav className="bg-gradient-to-r from-purple-900/50 via-blue-900/50 to-indigo-900/50 backdrop-blur-md shadow-2xl px-6 py-4 border-b border-white/10">
-        <div className="flex justify-between items-center">
-          <div>
-            <div className="flex items-center gap-3">
-              <h1 className="text-3xl font-bold bg-gradient-to-r from-white via-blue-200 to-purple-200 bg-clip-text text-transparent">
-                Kenny's Analytics Hub
-              </h1>
-              <span className="text-xs px-2 py-1 bg-gradient-to-r from-amber-500/20 to-orange-500/20 text-amber-300 rounded-full border border-amber-500/30 backdrop-blur-sm">
-                mock data version
-              </span>
-            </div>
-            <p className="text-blue-300 text-sm">Advanced Square POS Analytics • Real-time Dashboard</p>
-          </div>
-          <div className="flex items-center space-x-4">
-            <button 
-              onClick={fetchSquareData}
-              className="bg-gradient-to-r from-emerald-500 to-teal-600 text-white px-6 py-3 rounded-xl hover:from-emerald-600 hover:to-teal-700 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105"
-            >
-              🔄 Refresh Data
-            </button>
-            <span className="text-blue-200">Welcome, {user?.name}!</span>
-            <button 
-              onClick={handleLogout}
-              className="bg-gradient-to-r from-red-500 to-pink-600 text-white px-6 py-3 rounded-xl hover:from-red-600 hover:to-pink-700 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105"
-            >
-              Logout
-            </button>
-          </div>
-        </div>
-      </nav>
-      
-      <div className="p-8">
-        <div className="max-w-7xl mx-auto space-y-8">
-
-          {error && (
-            <div className="bg-gradient-to-r from-red-500/20 to-pink-500/20 border border-red-500/50 text-red-200 px-6 py-4 rounded-2xl shadow-lg backdrop-blur-sm">
-              <p className="font-bold">⚠️ Warning:</p>
-              <p>{error}</p>
-            </div>
-          )}
+    <div className="min-h-screen flex bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
+      {/* Sidebar */}
+      <aside className="w-64 bg-gradient-to-b from-purple-900 to-blue-900/80 border-r border-white/10 flex flex-col py-8 px-4 min-h-screen">
+                 <div className="mb-10">
+           <h2 className="text-2xl font-bold text-white mb-2">Kenny's Analytics Hub</h2>
+           <div className="text-blue-200 text-xs">Advanced Square POS Analytics • Real-time Dashboard</div>
+         </div>
+        <nav className="flex-1 space-y-4">
+          <button
+            className={`w-full text-left px-4 py-3 rounded-lg font-semibold transition ${
+              activeSection === "dashboard"
+                ? "bg-blue-600 text-white"
+                : "text-blue-200 hover:bg-blue-800/40"
+            }`}
+            onClick={() => setActiveSection("dashboard")}
+          >
+            📊 Dashboard
+          </button>
+          <button
+            className={`w-full text-left px-4 py-3 rounded-lg font-semibold transition ${
+              activeSection === "instagram"
+                ? "bg-pink-600 text-white"
+                : "text-pink-200 hover:bg-pink-800/40"
+            }`}
+            onClick={() => setActiveSection("instagram")}
+          >
+            📸 Instagram Insights
+          </button>
+          <button
+            className={`w-full text-left px-4 py-3 rounded-lg font-semibold transition ${
+              activeSection === "settings"
+                ? "bg-emerald-600 text-white"
+                : "text-emerald-200 hover:bg-emerald-800/40"
+            }`}
+            onClick={() => setActiveSection("settings")}
+          >
+            ⚙️ Settings
+          </button>
           
-          {/* Enhanced KPI Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            <div className="bg-gradient-to-br from-emerald-500 to-cyan-600 rounded-3xl shadow-2xl p-8 text-white transform hover:scale-105 transition-all duration-300 hover:shadow-emerald-500/25">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-lg font-semibold opacity-90 mb-2">Total Revenue</h3>
-                  <p className="text-4xl font-bold mb-2">
-                    {kpis ? formatCurrency(kpis.revenue.current) : '$0.00'}
-                  </p>
-                  {kpis && (
-                    <p className="text-sm opacity-80">
-                      {kpis.revenue.change >= 0 ? '📈' : '📉'} {kpis.revenue.change >= 0 ? '+' : ''}{kpis.revenue.change}% vs last period
-                    </p>
-                  )}
-                </div>
-                <div className="text-5xl opacity-20">💰</div>
+          {/* Logout button right under Settings */}
+          <button
+            onClick={handleLogout}
+            className="w-full bg-gradient-to-r from-red-500 to-pink-600 text-white px-4 py-3 rounded-lg hover:from-red-600 hover:to-pink-700 transition-all duration-300 shadow-lg"
+          >
+            Logout
+          </button>
+        </nav>
+      </aside>
+
+      {/* Main Content */}
+      <div className="flex-1 flex flex-col">
+        {/* ...existing navigation bar code... */}
+                 <nav className="bg-gradient-to-r from-purple-900/50 via-blue-900/50 to-indigo-900/50 backdrop-blur-md shadow-2xl px-6 py-2 border-b border-white/10">
+           <div className="flex flex-col items-center space-y-3">
+             {/* Welcome Message - Centered at top */}
+             <div className="text-center">
+               <span className="text-blue-200 text-lg font-semibold">Welcome, {user?.name}!</span>
+             </div>
+             
+             {/* Main Controls - Centered and evenly spaced */}
+             <div className="flex items-center justify-center space-x-8 w-full max-w-5xl">
+               {/* Location Dropdown */}
+               <div className="flex flex-col items-center space-y-2">
+                 <label className="text-blue-200 text-sm font-semibold">Location</label>
+                 <select
+                   value={selectedLocation}
+                   onChange={e => setSelectedLocation(e.target.value)}
+                   className="bg-white/10 border border-white/20 rounded-lg text-white px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400 backdrop-blur-sm min-w-[120px]"
+                 >
+                   {locations.map(loc => (
+                     <option key={loc.id} value={loc.id}>{loc.name}</option>
+                   ))}
+                 </select>
+               </div>
+               
+               {/* Date Range Pickers */}
+               <div className="flex flex-col items-center space-y-2">
+                 <label className="text-blue-200 text-sm font-semibold">Date Range</label>
+                 <div className="flex items-center space-x-2">
+                   <input
+                     type="date"
+                     value={startDate}
+                     max={endDate}
+                     onChange={e => setStartDate(e.target.value)}
+                     className="bg-white/10 border border-white/20 rounded-lg text-white px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-400 backdrop-blur-sm"
+                   />
+                   <span className="text-blue-200 text-sm">to</span>
+                   <input
+                     type="date"
+                     value={endDate}
+                     min={startDate}
+                     max={new Date().toISOString().slice(0, 10)}
+                     onChange={e => setEndDate(e.target.value)}
+                     className="bg-white/10 border border-white/20 rounded-lg text-white px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-400 backdrop-blur-sm"
+                   />
+                 </div>
+               </div>
+               
+               {/* Refresh Data Button */}
+               <div className="flex flex-col items-center space-y-2">
+                 <label className="text-blue-200 text-sm font-semibold">Actions</label>
+                 <button 
+                   onClick={fetchSquareData}
+                   className="bg-gradient-to-r from-emerald-500 to-teal-600 text-white px-6 py-3 rounded-xl hover:from-emerald-600 hover:to-teal-700 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105"
+                 >
+                   🔄 Refresh Data
+                 </button>
+               </div>
+             </div>
+           </div>
+         </nav>
+        <div className="p-8 flex-1 overflow-y-auto">
+          <div className="max-w-7xl mx-auto space-y-8">
+            {error && (
+              <div className="bg-gradient-to-r from-red-500/20 to-pink-500/20 border border-red-500/50 text-red-200 px-6 py-4 rounded-2xl shadow-lg backdrop-blur-sm">
+                <p className="font-bold">⚠️ Warning:</p>
+                <p>{error}</p>
               </div>
-            </div>
-            
-            <div className="bg-gradient-to-br from-blue-500 to-purple-600 rounded-3xl shadow-2xl p-8 text-white transform hover:scale-105 transition-all duration-300 hover:shadow-blue-500/25">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-lg font-semibold opacity-90 mb-2">Total Orders</h3>
-                  <p className="text-4xl font-bold mb-2">
-                    {kpis ? kpis.orders.current.toLocaleString() : '0'}
-                  </p>
-                  {kpis && (
-                    <p className="text-sm opacity-80">
-                      {kpis.orders.change >= 0 ? '📈' : '📉'} {kpis.orders.change >= 0 ? '+' : ''}{kpis.orders.change}% vs last period
-                    </p>
-                  )}
-                </div>
-                <div className="text-5xl opacity-20">📋</div>
-              </div>
-            </div>
-            
-            <div className="bg-gradient-to-br from-yellow-400 to-orange-500 rounded-3xl shadow-2xl p-8 text-white transform hover:scale-105 transition-all duration-300 hover:shadow-yellow-500/25">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-lg font-semibold opacity-90 mb-2">Avg Order Value</h3>
-                  <p className="text-4xl font-bold mb-2">
-                    {kpis ? formatCurrency(kpis.averageOrderValue.current) : '$0.00'}
-                  </p>
-                  {kpis && (
-                    <p className="text-sm opacity-80">
-                      {kpis.averageOrderValue.change >= 0 ? '📈' : '📉'} {kpis.averageOrderValue.change >= 0 ? '+' : ''}{kpis.averageOrderValue.change}% vs last period
-                    </p>
-                  )}
-                </div>
-                <div className="text-5xl opacity-20">💳</div>
-              </div>
-            </div>
-            
-            <div className="bg-gradient-to-br from-pink-500 to-rose-600 rounded-3xl shadow-2xl p-8 text-white transform hover:scale-105 transition-all duration-300 hover:shadow-pink-500/25">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-lg font-semibold opacity-90 mb-2">Customers</h3>
-                  <p className="text-4xl font-bold mb-2">
-                    {kpis ? kpis.customers.current.toLocaleString() : '0'}
-                  </p>
-                  <p className="text-sm opacity-80">Unique customers</p>
-                </div>
-                <div className="text-5xl opacity-20">👥</div>
-              </div>
-            </div>
-          </div>
+            )}
 
-          {/* Charts Grid */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            
-            {/* Revenue Trend Chart */}
-            <div className="bg-white/5 backdrop-blur-xl rounded-3xl shadow-2xl p-8 border border-white/10">
-              <h3 className="text-2xl font-bold bg-gradient-to-r from-purple-400 to-blue-400 bg-clip-text text-transparent mb-6">
-                📊 Revenue Trends (30 Days)
-              </h3>
-              <ResponsiveContainer width="100%" height={300}>
-                <AreaChart data={revenueData}>
-                  <defs>
-                    <linearGradient id="revenueGradient" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#8B5CF6" stopOpacity={0.8}/>
-                      <stop offset="95%" stopColor="#8B5CF6" stopOpacity={0.1}/>
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-                  <XAxis dataKey="date" stroke="#9CA3AF" />
-                  <YAxis stroke="#9CA3AF" />
-                  <Tooltip 
-                    contentStyle={{ 
-                      backgroundColor: 'rgba(17, 24, 39, 0.8)', 
-                      border: 'none', 
-                      borderRadius: '12px',
-                      boxShadow: '0 10px 25px rgba(0, 0, 0, 0.3)',
-                      color: '#F3F4F6'
-                    }} 
-                  />
-                  <Area type="monotone" dataKey="revenue" stroke="#8B5CF6" fillOpacity={1} fill="url(#revenueGradient)" strokeWidth={3} />
-                </AreaChart>
-              </ResponsiveContainer>
-            </div>
-
-            {/* Hourly Sales Pattern */}
-            <div className="bg-white/5 backdrop-blur-xl rounded-3xl shadow-2xl p-8 border border-white/10">
-              <h3 className="text-2xl font-bold bg-gradient-to-r from-emerald-400 to-teal-400 bg-clip-text text-transparent mb-6">
-                ⏰ Hourly Sales Pattern
-              </h3>
-              <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={salesByHour}>
-                  <defs>
-                    <linearGradient id="hourlyGradient" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#10B981" stopOpacity={0.8}/>
-                      <stop offset="95%" stopColor="#10B981" stopOpacity={0.3}/>
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-                  <XAxis dataKey="hour" stroke="#9CA3AF" />
-                  <YAxis stroke="#9CA3AF" />
-                  <Tooltip 
-                    contentStyle={{ 
-                      backgroundColor: 'rgba(17, 24, 39, 0.8)', 
-                      border: 'none', 
-                      borderRadius: '12px',
-                      boxShadow: '0 10px 25px rgba(0, 0, 0, 0.3)',
-                      color: '#F3F4F6'
-                    }} 
-                  />
-                  <Bar dataKey="sales" fill="url(#hourlyGradient)" radius={[4, 4, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-
-          </div>
-
-          {/* Second Row of Charts */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            
-            {/* Customer Segments Pie Chart */}
-            <div className="bg-white/5 backdrop-blur-xl rounded-3xl shadow-2xl p-8 border border-white/10">
-              <h3 className="text-2xl font-bold bg-gradient-to-r from-pink-400 to-rose-400 bg-clip-text text-transparent mb-6">
-                👥 Customer Segments
-              </h3>
-              <ResponsiveContainer width="100%" height={250}>
-                <PieChart>
-                  <Pie
-                    data={customerSegments}
-                    cx="50%"
-                    cy="50%"
-                    outerRadius={80}
-                    fill="#8884d8"
-                    dataKey="value"
-                    label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                  >
-                    {customerSegments.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
-                    ))}
-                  </Pie>
-                  <Tooltip 
-                    contentStyle={{ 
-                      backgroundColor: 'rgba(17, 24, 39, 0.8)', 
-                      border: 'none', 
-                      borderRadius: '12px',
-                      color: '#F3F4F6'
-                    }} 
-                  />
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
-
-            {/* Top Menu Items */}
-            <div className="lg:col-span-2 bg-white/5 backdrop-blur-xl rounded-3xl shadow-2xl p-8 border border-white/10">
-              <h3 className="text-2xl font-bold bg-gradient-to-r from-orange-400 to-yellow-400 bg-clip-text text-transparent mb-6">
-                🍔 Top Menu Items Performance
-              </h3>
-              {topMenuItems.length === 0 ? (
-                <div className="text-center py-12 text-gray-400">
-                  <div className="text-6xl mb-4">📊</div>
-                  <p>Loading menu items data...</p>
-                </div>
-              ) : (
-                <ResponsiveContainer width="100%" height={400}>
-                  <BarChart data={topMenuItems} margin={{ top: 20, right: 30, left: 20, bottom: 60 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-                    <XAxis 
-                      dataKey="name" 
-                      stroke="#9CA3AF" 
-                      angle={-45}
-                      textAnchor="end"
-                      height={100}
-                      fontSize={12}
-                    />
-                    <YAxis stroke="#9CA3AF" />
-                    <Tooltip 
-                      contentStyle={{ 
-                        backgroundColor: 'rgba(17, 24, 39, 0.9)', 
-                        border: '1px solid #374151', 
-                        borderRadius: '8px',
-                        color: '#F3F4F6'
-                      }}
-                      formatter={(value, name) => [value, name === 'sales' ? 'Sales Count' : name]}
-                    />
-                    <Bar 
-                      dataKey="sales" 
-                      fill="#F59E0B" 
-                      stroke="#EA580C"
-                      strokeWidth={1}
-                      radius={[4, 4, 0, 0]}
-                    />
-                  </BarChart>
-                </ResponsiveContainer>
-              )}
-            </div>
-
-          </div>
-
-          {/* Monthly Trends */}
-          <div className="bg-white/5 backdrop-blur-xl rounded-3xl shadow-2xl p-8 border border-white/10">
-            <h3 className="text-2xl font-bold bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent mb-6">
-              📈 Monthly Performance Trends
-            </h3>
-            <ResponsiveContainer width="100%" height={400}>
-              <LineChart data={monthlyTrends}>
-                <defs>
-                  <linearGradient id="revenueLineGradient" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#8B5CF6" stopOpacity={0.8}/>
-                    <stop offset="95%" stopColor="#8B5CF6" stopOpacity={0.1}/>
-                  </linearGradient>
-                  <linearGradient id="ordersLineGradient" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#10B981" stopOpacity={0.8}/>
-                    <stop offset="95%" stopColor="#10B981" stopOpacity={0.1}/>
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-                <XAxis dataKey="month" stroke="#9CA3AF" />
-                <YAxis yAxisId="left" stroke="#9CA3AF" />
-                <YAxis yAxisId="right" orientation="right" stroke="#9CA3AF" />
-                <Tooltip 
-                  contentStyle={{ 
-                    backgroundColor: 'rgba(17, 24, 39, 0.8)', 
-                    border: 'none', 
-                    borderRadius: '12px',
-                    boxShadow: '0 10px 25px rgba(0, 0, 0, 0.3)',
-                    color: '#F3F4F6'
-                  }} 
-                />
-                <Legend />
-                <Area yAxisId="left" type="monotone" dataKey="revenue" stroke="#8B5CF6" fillOpacity={1} fill="url(#revenueLineGradient)" strokeWidth={3} />
-                <Line yAxisId="right" type="monotone" dataKey="orders" stroke="#10B981" strokeWidth={3} dot={{ r: 6 }} />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-
-          {/* Recent Orders with Enhanced Design */}
-          <div className="bg-white/5 backdrop-blur-xl rounded-3xl shadow-2xl p-8 border border-white/10">
-            <h3 className="text-2xl font-bold bg-gradient-to-r from-cyan-400 to-blue-400 bg-clip-text text-transparent mb-6">
-              🧾 Recent Orders Analysis
-            </h3>
-            {orders.length > 0 ? (
-              <div className="space-y-4">
-                {orders.map((order, index) => (
-                  <div key={order.id || index} className="bg-gradient-to-r from-gray-800/50 to-blue-800/30 rounded-2xl p-6 border border-gray-700/50 hover:shadow-xl transition-all duration-300 backdrop-blur-sm">
-                    <div className="flex justify-between items-center">
+            {/* Section switching */}
+            {activeSection === "dashboard" && (
+              <>
+                {/* Enhanced KPI Cards */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                  <div className="bg-gradient-to-br from-emerald-500 to-cyan-600 rounded-3xl shadow-2xl p-8 text-white transform hover:scale-105 transition-all duration-300 hover:shadow-emerald-500/25">
+                    <div className="flex items-center justify-between">
                       <div>
-                        <p className="font-bold text-blue-200">Order #{order.id?.slice(-8) || 'N/A'}</p>
-                        <p className="text-sm text-gray-400">
-                          {formatDate(order.createdAt)} • {order.lineItems?.length || 0} items
+                        <h3 className="text-lg font-semibold opacity-90 mb-2">Total Revenue</h3>
+                        <p className="text-4xl font-bold mb-2">
+                          {kpis ? formatCurrency(kpis.revenue.current) : '$0.00'}
                         </p>
-                        {order.lineItems && order.lineItems.length > 0 && (
-                          <p className="text-sm text-gray-500 mt-2">
-                            {order.lineItems.map(item => `${item.quantity}x ${item.name}`).join(', ')}
+                        {kpis && (
+                          <p className="text-sm opacity-80">
+                            {kpis.revenue.change >= 0 ? '📈' : '📉'} {kpis.revenue.change >= 0 ? '+' : ''}{kpis.revenue.change}% vs last period
                           </p>
                         )}
                       </div>
-                      <div className="text-right">
-                        <p className="font-bold text-3xl bg-gradient-to-r from-emerald-400 to-green-400 bg-clip-text text-transparent">
-                          {formatCurrency((order.totalMoney?.amount || 0) / 100)}
-                        </p>
-                        <p className="text-sm text-gray-400 bg-gradient-to-r from-blue-500/20 to-purple-500/20 px-3 py-1 rounded-full border border-blue-500/30">
-                          {order.state}
-                        </p>
-                      </div>
+                      <div className="text-5xl opacity-20">💰</div>
                     </div>
                   </div>
-                ))}
+                  
+                  <div className="bg-gradient-to-br from-blue-500 to-purple-600 rounded-3xl shadow-2xl p-8 text-white transform hover:scale-105 transition-all duration-300 hover:shadow-blue-500/25">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h3 className="text-lg font-semibold opacity-90 mb-2">Total Orders</h3>
+                        <p className="text-4xl font-bold mb-2">
+                          {kpis ? kpis.orders.current.toLocaleString() : '0'}
+                        </p>
+                        {kpis && (
+                          <p className="text-sm opacity-80">
+                            {kpis.orders.change >= 0 ? '📈' : '📉'} {kpis.orders.change >= 0 ? '+' : ''}{kpis.orders.change}% vs last period
+                          </p>
+                        )}
+                      </div>
+                      <div className="text-5xl opacity-20">📋</div>
+                    </div>
+                  </div>
+                  
+                  <div className="bg-gradient-to-br from-yellow-400 to-orange-500 rounded-3xl shadow-2xl p-8 text-white transform hover:scale-105 transition-all duration-300 hover:shadow-yellow-500/25">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h3 className="text-lg font-semibold opacity-90 mb-2">Avg Order Value</h3>
+                        <p className="text-4xl font-bold mb-2">
+                          {kpis ? formatCurrency(kpis.averageOrderValue.current) : '$0.00'}
+                        </p>
+                        {kpis && (
+                          <p className="text-sm opacity-80">
+                            {kpis.averageOrderValue.change >= 0 ? '📈' : '📉'} {kpis.averageOrderValue.change >= 0 ? '+' : ''}{kpis.averageOrderValue.change}% vs last period
+                          </p>
+                        )}
+                      </div>
+                      <div className="text-5xl opacity-20">💳</div>
+                    </div>
+                  </div>
+                  
+                  <div className="bg-gradient-to-br from-pink-500 to-rose-600 rounded-3xl shadow-2xl p-8 text-white transform hover:scale-105 transition-all duration-300 hover:shadow-pink-500/25">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h3 className="text-lg font-semibold opacity-90 mb-2">Customers</h3>
+                        <p className="text-4xl font-bold mb-2">
+                          {kpis ? kpis.customers.current.toLocaleString() : '0'}
+                        </p>
+                        <p className="text-sm opacity-80">Unique customers</p>
+                      </div>
+                      <div className="text-5xl opacity-20">👥</div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Charts Grid */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                  
+                  {/* Revenue Trend Chart */}
+                  <div className="bg-white/5 backdrop-blur-xl rounded-3xl shadow-2xl p-8 border border-white/10">
+                    <h3 className="text-2xl font-bold bg-gradient-to-r from-purple-400 to-blue-400 bg-clip-text text-transparent mb-6">
+                      📊 Revenue Trends (30 Days)
+                    </h3>
+                    <ResponsiveContainer width="100%" height={300}>
+                      <AreaChart data={revenueData}>
+                        <defs>
+                          <linearGradient id="revenueGradient" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="#8B5CF6" stopOpacity={0.8}/>
+                            <stop offset="95%" stopColor="#8B5CF6" stopOpacity={0.1}/>
+                          </linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                        <XAxis dataKey="date" stroke="#9CA3AF" />
+                        <YAxis stroke="#9CA3AF" />
+                        <Tooltip 
+                          contentStyle={{ 
+                            backgroundColor: 'rgba(17, 24, 39, 0.8)', 
+                            border: 'none', 
+                            borderRadius: '12px',
+                            boxShadow: '0 10px 25px rgba(0, 0, 0, 0.3)',
+                            color: '#F3F4F6'
+                          }} 
+                        />
+                        <Area type="monotone" dataKey="revenue" stroke="#8B5CF6" fillOpacity={1} fill="url(#revenueGradient)" strokeWidth={3} />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  </div>
+
+                  {/* Hourly Sales Pattern */}
+                  <div className="bg-white/5 backdrop-blur-xl rounded-3xl shadow-2xl p-8 border border-white/10">
+                    <h3 className="text-2xl font-bold bg-gradient-to-r from-emerald-400 to-teal-400 bg-clip-text text-transparent mb-6">
+                      ⏰ Hourly Sales Pattern
+                    </h3>
+                    <ResponsiveContainer width="100%" height={300}>
+                      <BarChart data={salesByHour}>
+                        <defs>
+                          <linearGradient id="hourlyGradient" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="#10B981" stopOpacity={0.8}/>
+                            <stop offset="95%" stopColor="#10B981" stopOpacity={0.3}/>
+                          </linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                        <XAxis dataKey="hour" stroke="#9CA3AF" />
+                        <YAxis stroke="#9CA3AF" />
+                        <Tooltip 
+                          contentStyle={{ 
+                            backgroundColor: 'rgba(17, 24, 39, 0.8)', 
+                            border: 'none', 
+                            borderRadius: '12px',
+                            boxShadow: '0 10px 25px rgba(0, 0, 0, 0.3)',
+                            color: '#F3F4F6'
+                          }} 
+                        />
+                        <Bar dataKey="sales" fill="url(#hourlyGradient)" radius={[4, 4, 0, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+
+                </div>
+
+                {/* Second Row of Charts */}
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                  
+                  {/* Customer Segments Pie Chart */}
+                  <div className="bg-white/5 backdrop-blur-xl rounded-3xl shadow-2xl p-8 border border-white/10">
+                    <h3 className="text-2xl font-bold bg-gradient-to-r from-pink-400 to-rose-400 bg-clip-text text-transparent mb-6">
+                      👥 Customer Segments
+                    </h3>
+                    <ResponsiveContainer width="100%" height={250}>
+                      <PieChart>
+                        <Pie
+                          data={customerSegments}
+                          cx="50%"
+                          cy="50%"
+                          outerRadius={80}
+                          fill="#8884d8"
+                          dataKey="value"
+                          label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                        >
+                          {customerSegments.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={entry.color} />
+                          ))}
+                        </Pie>
+                        <Tooltip 
+                          contentStyle={{ 
+                            backgroundColor: 'rgba(17, 24, 39, 0.8)', 
+                            border: 'none', 
+                            borderRadius: '12px',
+                            color: '#F3F4F6'
+                          }} 
+                        />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+
+                  {/* Top Menu Items */}
+                  <div className="lg:col-span-2 bg-white/5 backdrop-blur-xl rounded-3xl shadow-2xl p-8 border border-white/10">
+                    <h3 className="text-2xl font-bold bg-gradient-to-r from-orange-400 to-yellow-400 bg-clip-text text-transparent mb-6">
+                      🍔 Top Menu Items Performance
+                    </h3>
+                    {topMenuItems.length === 0 ? (
+                      <div className="text-center py-12 text-gray-400">
+                        <div className="text-6xl mb-4">📊</div>
+                        <p>Loading menu items data...</p>
+                      </div>
+                    ) : (
+                      <ResponsiveContainer width="100%" height={400}>
+                        <BarChart data={topMenuItems} margin={{ top: 20, right: 30, left: 20, bottom: 60 }}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                          <XAxis 
+                            dataKey="name" 
+                            stroke="#9CA3AF" 
+                            angle={-45}
+                            textAnchor="end"
+                            height={100}
+                            fontSize={12}
+                          />
+                          <YAxis stroke="#9CA3AF" />
+                          <Tooltip 
+                            contentStyle={{ 
+                              backgroundColor: 'rgba(17, 24, 39, 0.9)', 
+                              border: '1px solid #374151', 
+                              borderRadius: '8px',
+                              color: '#F3F4F6'
+                            }}
+                            formatter={(value, name) => [value, name === 'sales' ? 'Sales Count' : name]}
+                          />
+                          <Bar 
+                            dataKey="sales" 
+                            fill="#F59E0B" 
+                            stroke="#EA580C"
+                            strokeWidth={1}
+                            radius={[4, 4, 0, 0]}
+                          />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    )}
+                  </div>
+
+                </div>
+
+                {/* Monthly Trends */}
+                <div className="bg-white/5 backdrop-blur-xl rounded-3xl shadow-2xl p-8 border border-white/10">
+                  <h3 className="text-2xl font-bold bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent mb-6">
+                    📈 Monthly Performance Trends
+                  </h3>
+                  <ResponsiveContainer width="100%" height={400}>
+                    <LineChart data={monthlyTrends}>
+                      <defs>
+                        <linearGradient id="revenueLineGradient" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#8B5CF6" stopOpacity={0.8}/>
+                          <stop offset="95%" stopColor="#8B5CF6" stopOpacity={0.1}/>
+                        </linearGradient>
+                        <linearGradient id="ordersLineGradient" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#10B981" stopOpacity={0.8}/>
+                          <stop offset="95%" stopColor="#10B981" stopOpacity={0.1}/>
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                      <XAxis dataKey="month" stroke="#9CA3AF" />
+                      <YAxis yAxisId="left" stroke="#9CA3AF" />
+                      <YAxis yAxisId="right" orientation="right" stroke="#9CA3AF" />
+                      <Tooltip 
+                        contentStyle={{ 
+                          backgroundColor: 'rgba(17, 24, 39, 0.8)', 
+                          border: 'none', 
+                          borderRadius: '12px',
+                          boxShadow: '0 10px 25px rgba(0, 0, 0, 0.3)',
+                          color: '#F3F4F6'
+                        }} 
+                      />
+                      <Legend />
+                      <Area yAxisId="left" type="monotone" dataKey="revenue" stroke="#8B5CF6" fillOpacity={1} fill="url(#revenueLineGradient)" strokeWidth={3} />
+                      <Line yAxisId="right" type="monotone" dataKey="orders" stroke="#10B981" strokeWidth={3} dot={{ r: 6 }} />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+
+                {/* Recent Orders with Enhanced Design */}
+                <div className="bg-white/5 backdrop-blur-xl rounded-3xl shadow-2xl p-8 border border-white/10">
+                  <h3 className="text-2xl font-bold bg-gradient-to-r from-cyan-400 to-blue-400 bg-clip-text text-transparent mb-6">
+                    🧾 Recent Orders Analysis
+                  </h3>
+                  {/* Show total orders in selected time frame */}
+                  <div className="mb-4 text-blue-200 text-lg font-semibold">
+                    Total Orders in Selected Period: {totalOrdersCount}
+                  </div>
+                  {orders.length > 0 ? (
+                    <div className="space-y-4">
+                      {orders.map((order, index) => (
+                        <div key={order.id || index} className="bg-gradient-to-r from-gray-800/50 to-blue-800/30 rounded-2xl p-6 border border-gray-700/50 hover:shadow-xl transition-all duration-300 backdrop-blur-sm">
+                          <div className="flex justify-between items-center">
+                            <div>
+                              <p className="font-bold text-blue-200">Order #{order.id?.slice(-8) || 'N/A'}</p>
+                              <p className="text-sm text-gray-400">
+                                {formatDate(order.createdAt)} • {order.lineItems?.length || 0} items
+                              </p>
+                              {order.lineItems && order.lineItems.length > 0 && (
+                                <p className="text-sm text-gray-500 mt-2">
+                                  {order.lineItems.map(item => `${item.quantity}x ${item.name}`).join(', ')}
+                                </p>
+                              )}
+                            </div>
+                            <div className="text-right">
+                              <p className="font-bold text-3xl bg-gradient-to-r from-emerald-400 to-green-400 bg-clip-text text-transparent">
+                                {formatCurrency((order.totalMoney?.amount || 0) / 100)}
+                              </p>
+                              <p className="text-sm text-gray-400 bg-gradient-to-r from-blue-500/20 to-purple-500/20 px-3 py-1 rounded-full border border-blue-500/30">
+                                {order.state}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-12">
+                      <div className="text-6xl mb-4">📊</div>
+                      <p className="text-gray-400 text-lg">No recent orders found. Check your Square API configuration.</p>
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
+
+            {activeSection === "instagram" && (
+              <div className="bg-white/5 backdrop-blur-xl rounded-3xl shadow-2xl p-8 border border-pink-400/20">
+                <h2 className="text-3xl font-bold text-pink-300 mb-4">📸 Instagram Insights</h2>
+                <p className="text-pink-100 mb-2">
+                  Here you will see analytics and insights from your Instagram account.
+                </p>
+                <div className="text-pink-200 italic">[Instagram analytics coming soon!]</div>
               </div>
-            ) : (
-              <div className="text-center py-12">
-                <div className="text-6xl mb-4">📊</div>
-                <p className="text-gray-400 text-lg">No recent orders found. Check your Square API configuration.</p>
+            )}
+
+            {activeSection === "settings" && (
+              <div className="bg-white/5 backdrop-blur-xl rounded-3xl shadow-2xl p-8 border border-emerald-400/20">
+                <h2 className="text-3xl font-bold text-emerald-300 mb-4">⚙️ Settings</h2>
+                <p className="text-emerald-100 mb-2">
+                  Manage your account, preferences, and integrations here.
+                </p>
+                <div className="text-emerald-200 italic">[Settings panel coming soon!]</div>
               </div>
             )}
           </div>
