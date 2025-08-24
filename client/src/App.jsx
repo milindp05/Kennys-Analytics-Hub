@@ -144,9 +144,9 @@ function DashboardPage() {
         `http://localhost:5000/api/square/kpis?locationId=${selectedLocation}&startDate=${startDate}&endDate=${endDate}`
       )
       const kpiData = await kpiResponse.json()
-      const ordersResponse = await fetch(
-        `http://localhost:5000/api/square/orders?limit=10&locationId=${selectedLocation}&startDate=${startDate}&endDate=${endDate}`
-      )
+             const ordersResponse = await fetch(
+         `http://localhost:5000/api/square/orders?limit=20&locationId=${selectedLocation}&startDate=${startDate}&endDate=${endDate}`
+       )
       const ordersData = await ordersResponse.json()
       if (kpiData.success) setKpis(kpiData.data)
       if (ordersData.success) {
@@ -308,56 +308,56 @@ function DashboardPage() {
                <span className="text-blue-200 text-lg font-semibold">Welcome, {user?.name}!</span>
              </div>
              
-             {/* Main Controls - Centered and evenly spaced */}
-             <div className="flex items-center justify-center space-x-8 w-full max-w-5xl">
-               {/* Location Dropdown */}
-               <div className="flex flex-col items-center space-y-2">
-                 <label className="text-blue-200 text-sm font-semibold">Location</label>
-                 <select
-                   value={selectedLocation}
-                   onChange={e => setSelectedLocation(e.target.value)}
-                   className="bg-white/10 border border-white/20 rounded-lg text-white px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400 backdrop-blur-sm min-w-[120px]"
-                 >
-                   {locations.map(loc => (
-                     <option key={loc.id} value={loc.id}>{loc.name}</option>
-                   ))}
-                 </select>
-               </div>
-               
-               {/* Date Range Pickers */}
-               <div className="flex flex-col items-center space-y-2">
-                 <label className="text-blue-200 text-sm font-semibold">Date Range</label>
-                 <div className="flex items-center space-x-2">
-                   <input
-                     type="date"
-                     value={startDate}
-                     max={endDate}
-                     onChange={e => setStartDate(e.target.value)}
-                     className="bg-white/10 border border-white/20 rounded-lg text-white px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-400 backdrop-blur-sm"
-                   />
-                   <span className="text-blue-200 text-sm">to</span>
-                   <input
-                     type="date"
-                     value={endDate}
-                     min={startDate}
-                     max={new Date().toISOString().slice(0, 10)}
-                     onChange={e => setEndDate(e.target.value)}
-                     className="bg-white/10 border border-white/20 rounded-lg text-white px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-400 backdrop-blur-sm"
-                   />
-                 </div>
-               </div>
-               
-               {/* Refresh Data Button */}
-               <div className="flex flex-col items-center space-y-2">
-                 <label className="text-blue-200 text-sm font-semibold">Actions</label>
-                 <button 
-                   onClick={fetchSquareData}
-                   className="bg-gradient-to-r from-emerald-500 to-teal-600 text-white px-6 py-3 rounded-xl hover:from-emerald-600 hover:to-teal-700 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105"
-                 >
-                   🔄 Refresh Data
-                 </button>
-               </div>
-             </div>
+                           {/* Main Controls - Centered and evenly spaced */}
+              <div className="flex items-center justify-center space-x-16 w-full max-w-6xl">
+                {/* Location Dropdown */}
+                <div className="flex flex-col items-center space-y-3">
+                  <label className="text-blue-200 text-base font-semibold">Location</label>
+                  <select
+                    value={selectedLocation}
+                    onChange={e => setSelectedLocation(e.target.value)}
+                    className="bg-white/10 border border-white/20 rounded-lg text-white px-6 py-3 focus:outline-none focus:ring-2 focus:ring-blue-400 backdrop-blur-sm min-w-[160px] text-base"
+                  >
+                    {locations.map(loc => (
+                      <option key={loc.id} value={loc.id}>{loc.name}</option>
+                    ))}
+                  </select>
+                </div>
+                
+                {/* Date Range Pickers */}
+                <div className="flex flex-col items-center space-y-3">
+                  <label className="text-blue-200 text-base font-semibold">Date Range</label>
+                  <div className="flex items-center space-x-3">
+                    <input
+                      type="date"
+                      value={startDate}
+                      max={endDate}
+                      onChange={e => setStartDate(e.target.value)}
+                      className="bg-white/10 border border-white/20 rounded-lg text-white px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-400 backdrop-blur-sm text-base"
+                    />
+                    <span className="text-blue-200 text-base font-medium">to</span>
+                    <input
+                      type="date"
+                      value={endDate}
+                      min={startDate}
+                      max={new Date().toISOString().slice(0, 10)}
+                      onChange={e => setEndDate(e.target.value)}
+                      className="bg-white/10 border border-white/20 rounded-lg text-white px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-400 backdrop-blur-sm text-base"
+                    />
+                  </div>
+                </div>
+                
+                {/* Refresh Data Button */}
+                <div className="flex flex-col items-center space-y-3">
+                  <label className="text-blue-200 text-base font-semibold">Actions</label>
+                  <button 
+                    onClick={fetchSquareData}
+                    className="bg-gradient-to-r from-emerald-500 to-teal-600 text-white px-8 py-4 rounded-xl hover:from-emerald-600 hover:to-teal-700 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105 text-base font-semibold"
+                  >
+                    🔄 Refresh Data
+                  </button>
+                </div>
+              </div>
            </div>
          </nav>
         <div className="p-8 flex-1 overflow-y-auto">
@@ -374,22 +374,22 @@ function DashboardPage() {
               <>
                 {/* Enhanced KPI Cards */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                  <div className="bg-gradient-to-br from-emerald-500 to-cyan-600 rounded-3xl shadow-2xl p-8 text-white transform hover:scale-105 transition-all duration-300 hover:shadow-emerald-500/25">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <h3 className="text-lg font-semibold opacity-90 mb-2">Total Revenue</h3>
-                        <p className="text-4xl font-bold mb-2">
-                          {kpis ? formatCurrency(kpis.revenue.current) : '$0.00'}
-                        </p>
-                        {kpis && (
-                          <p className="text-sm opacity-80">
-                            {kpis.revenue.change >= 0 ? '📈' : '📉'} {kpis.revenue.change >= 0 ? '+' : ''}{kpis.revenue.change}% vs last period
-                          </p>
-                        )}
-                      </div>
-                      <div className="text-5xl opacity-20">💰</div>
-                    </div>
-                  </div>
+                                     <div className="bg-gradient-to-br from-emerald-500 to-cyan-600 rounded-3xl shadow-2xl p-8 text-white transform hover:scale-105 transition-all duration-300 hover:shadow-emerald-500/25">
+                     <div className="flex items-center justify-between">
+                       <div>
+                         <h3 className="text-lg font-semibold opacity-90 mb-2">Total Revenue</h3>
+                         <p className="text-4xl font-bold mb-2">
+                           {kpis ? formatCurrency(kpis.revenue.current) : '$0.00'}
+                         </p>
+                         {kpis && (
+                           <p className="text-sm opacity-80">
+                             {kpis.revenue.change >= 0 ? '📈' : '📉'} {kpis.revenue.change >= 0 ? '+' : ''}{kpis.revenue.change}% vs last period
+                           </p>
+                         )}
+                       </div>
+                       <div className="text-4xl opacity-20 flex items-center justify-center w-16 h-16">💰</div>
+                     </div>
+                   </div>
                   
                   <div className="bg-gradient-to-br from-blue-500 to-purple-600 rounded-3xl shadow-2xl p-8 text-white transform hover:scale-105 transition-all duration-300 hover:shadow-blue-500/25">
                     <div className="flex items-center justify-between">
@@ -622,15 +622,15 @@ function DashboardPage() {
                   </ResponsiveContainer>
                 </div>
 
-                {/* Recent Orders with Enhanced Design */}
-                <div className="bg-white/5 backdrop-blur-xl rounded-3xl shadow-2xl p-8 border border-white/10">
-                  <h3 className="text-2xl font-bold bg-gradient-to-r from-cyan-400 to-blue-400 bg-clip-text text-transparent mb-6">
-                    🧾 Recent Orders Analysis
-                  </h3>
-                  {/* Show total orders in selected time frame */}
-                  <div className="mb-4 text-blue-200 text-lg font-semibold">
-                    Total Orders in Selected Period: {totalOrdersCount}
-                  </div>
+                                 {/* Recent Orders with Enhanced Design */}
+                 <div className="bg-white/5 backdrop-blur-xl rounded-3xl shadow-2xl p-8 border border-white/10">
+                   <h3 className="text-2xl font-bold bg-gradient-to-r from-cyan-400 to-blue-400 bg-clip-text text-transparent mb-6">
+                     🧾 Recent Orders Analysis
+                   </h3>
+                                       {/* Show last 20 orders message */}
+                    <div className="mb-4 text-blue-200 text-lg font-semibold">
+                      Showing Last 20 Orders
+                    </div>
                   {orders.length > 0 ? (
                     <div className="space-y-4">
                       {orders.map((order, index) => (
