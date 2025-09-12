@@ -213,13 +213,16 @@ function DashboardPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center">
         <div className="text-center">
           <div className="relative">
             <div className="w-20 h-20 border-4 border-blue-200 border-t-blue-500 rounded-full animate-spin mx-auto mb-6"></div>
             <div className="absolute inset-0 w-20 h-20 border-4 border-purple-200 border-t-purple-500 rounded-full animate-ping mx-auto"></div>
           </div>
-          <p className="text-blue-200 text-lg">Loading Advanced Analytics...</p>
+          <h1 className="text-3xl font-bold bg-gradient-to-r from-white via-blue-200 to-purple-200 bg-clip-text text-transparent mb-2">
+            Kenny's Analytics Hub
+          </h1>
+          <p className="text-blue-300 text-lg">Loading Advanced Analytics...</p>
         </div>
       </div>
     )

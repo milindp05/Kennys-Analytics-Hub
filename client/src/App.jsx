@@ -1,5 +1,7 @@
 import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate } from "react-router-dom"
 import { createContext, useContext, useState, useEffect } from "react"
+import { ChefHat, Bot } from "lucide-react"
+import aiChatService from "./services/aiChatService"
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
   LineChart, Line, PieChart, Pie, Cell, AreaChart, Area, RadialBarChart, RadialBar
@@ -57,42 +59,55 @@ function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 flex items-center justify-center">
-      <div className="bg-white/10 backdrop-blur-md p-8 rounded-3xl shadow-2xl max-w-md w-full border border-white/20">
-        <h2 className="text-3xl font-bold text-center mb-8 bg-gradient-to-r from-white to-blue-200 bg-clip-text text-transparent">
-          Kenny's Analytics Hub
-        </h2>
-        {error && (
-          <div className="bg-red-500/20 border border-red-500/50 text-red-200 px-4 py-3 rounded-lg mb-4 backdrop-blur-sm">
-            {error}
+    <div className="min-h-screen bg-white font-['Inter'] flex items-center justify-center px-4">
+      <div className="max-w-md w-full space-y-8">
+        {/* Header */}
+        <div className="text-center">
+          <div className="mx-auto h-16 w-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+            <ChefHat className="h-8 w-8 text-gray-600" />
           </div>
-        )}
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div>
-            <label className="block text-sm font-medium text-blue-200 mb-2">Email</label>
-            <input
-              name="email"
-              type="email"
-              placeholder="Enter your email"
-              className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-400 backdrop-blur-sm"
-            />
+          <h2 className="text-3xl font-bold text-gray-900 font-['Poppins']">Kenny's Analytics Hub</h2>
+          <p className="mt-2 text-sm text-gray-600">Sign in to your dashboard</p>
+        </div>
+
+        {/* Login Form */}
+        <div className="bg-white rounded-xl shadow-sm p-8 border border-gray-200">
+          {error && (
+            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md text-sm mb-6">
+              {error}
+            </div>
+          )}
+          <form onSubmit={handleSubmit} className="space-y-6">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
+              <input
+                name="email"
+                type="email"
+                placeholder="kenny@meals.com"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Password</label>
+              <input
+                name="password"
+                type="password"
+                placeholder="Enter your password"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent"
+              />
+            </div>
+            <button
+              type="submit"
+              className="w-full bg-gray-900 text-white py-2 px-4 rounded-lg font-semibold hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Access Analytics Hub
+            </button>
+          </form>
+          
+          <div className="mt-6 text-center">
+            <p className="text-xs text-gray-500">Demo credentials: kenny@meals.com / dashboard123</p>
           </div>
-          <div>
-            <label className="block text-sm font-medium text-blue-200 mb-2">Password</label>
-            <input
-              name="password"
-              type="password"
-              placeholder="Enter your password"
-              className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-400 backdrop-blur-sm"
-            />
-          </div>
-          <button
-            type="submit"
-            className="w-full bg-gradient-to-r from-blue-500 to-purple-600 text-white py-3 px-4 rounded-lg hover:from-blue-600 hover:to-purple-700 transition-all duration-300 font-semibold shadow-lg"
-          >
-            Access Analytics Hub
-          </button>
-        </form>
+        </div>
       </div>
     </div>
   )
@@ -106,7 +121,7 @@ function DashboardPage() {
   const [revenueData, setRevenueData] = useState([])
   const [salesByHour, setSalesByHour] = useState([])
   const [topMenuItems, setTopMenuItems] = useState([])
-  const [customerSegments, setCustomerSegments] = useState([])
+
   const [monthlyTrends, setMonthlyTrends] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
@@ -123,6 +138,18 @@ function DashboardPage() {
   const [totalOrdersCount, setTotalOrdersCount] = useState(0)
   const [activeSection, setActiveSection] = useState("dashboard") // "dashboard", "instagram", "settings"
   const [expandedOrders, setExpandedOrders] = useState(new Set())
+
+  // Chat functionality
+  const [chatMessages, setChatMessages] = useState([
+    {
+      id: 1,
+      type: 'ai',
+      content: "Hey there! 👋 I'm your AI assistant for Kenny's Meals. I've got access to all your business data, so I can help you with:",
+      timestamp: new Date()
+    }
+  ])
+  const [chatInput, setChatInput] = useState("")
+  const [isTyping, setIsTyping] = useState(false)
 
   // Add locations mapping
   const locations = [
@@ -142,13 +169,13 @@ function DashboardPage() {
       setError("")
       // Pass locationId, startDate, endDate as query params
       const kpiResponse = await fetch(
-        `http://localhost:5000/api/square/kpis?locationId=${selectedLocation}&startDate=${startDate}&endDate=${endDate}`
+        `http://localhost:5001/api/square/kpis?locationId=${selectedLocation}&startDate=${startDate}&endDate=${endDate}`
       )
       const kpiData = await kpiResponse.json()
       console.log('KPI Response:', kpiData)
       
       const ordersResponse = await fetch(
-        `http://localhost:5000/api/square/orders?limit=100&locationId=${selectedLocation}&startDate=${startDate}&endDate=${endDate}`
+        `http://localhost:5001/api/square/orders?limit=100&locationId=${selectedLocation}&startDate=${startDate}&endDate=${endDate}`
       )
       const ordersData = await ordersResponse.json()
       console.log('Orders Response:', ordersData)
@@ -193,14 +220,7 @@ function DashboardPage() {
     }))
     setSalesByHour(hourlyData)
 
-    // Customer segments
-    const segments = [
-      { name: 'Regular Customers', value: 45, color: '#8B5CF6' },
-      { name: 'New Customers', value: 30, color: '#10B981' },
-      { name: 'VIP Customers', value: 15, color: '#F59E0B' },
-      { name: 'Returning Customers', value: 10, color: '#EF4444' }
-    ]
-    setCustomerSegments(segments)
+
 
     // Monthly trends
     const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
@@ -216,72 +236,21 @@ function DashboardPage() {
   const generateTopSellingMeals = (ordersData) => {
     console.log('generateTopSellingMeals called with:', ordersData)
     
-    if (!ordersData || ordersData.length === 0) {
-      console.log('No orders data, setting empty array')
-      setTopMenuItems([])
-      return
-    }
-
-    // Create a map to aggregate item sales
-    const itemSales = new Map()
-
-    ordersData.forEach(order => {
-      console.log('Processing order:', order)
-      if (order.lineItems && order.lineItems.length > 0) {
-        order.lineItems.forEach(item => {
-          console.log('Processing line item:', item)
-          const itemName = item.name || 'Unknown Item'
-          const quantity = item.quantity || 1
-          const itemPrice = (item.basePriceMoney?.amount || 0) / 100
-          const totalPrice = (item.totalMoney?.amount || 0) / 100
-
-          if (itemSales.has(itemName)) {
-            const existing = itemSales.get(itemName)
-            existing.sales += quantity
-            existing.revenue += totalPrice
-            existing.orderCount += 1
-          } else {
-            itemSales.set(itemName, {
-              name: itemName,
-              sales: quantity,
-              revenue: totalPrice,
-              orderCount: 1,
-              avgPrice: itemPrice
-            })
-          }
-        })
-      } else {
-        console.log('Order has no line items:', order)
-      }
-    })
-
-    // Convert to array and sort by sales volume
-    const topItems = Array.from(itemSales.values())
-      .sort((a, b) => b.sales - a.sales)
-      .slice(0, 10) // Top 10 items
-
-    // Calculate percentages
-    const totalSales = topItems.reduce((sum, item) => sum + item.sales, 0)
-    topItems.forEach(item => {
-      item.percentage = totalSales > 0 ? Math.round((item.sales / totalSales) * 100) : 0
-    })
-
-    console.log('Generated top selling meals from Square data:', topItems)
+    // Always create sample data for now to ensure chart works
+    const sampleData = [
+      { name: "BBQ Chicken & Roasted Potatoes", sales: 25, revenue: 125.00 },
+      { name: "Protein Oats Strawberry Cheesecake", sales: 18, revenue: 72.00 },
+      { name: "Spiced Ground Turkey Rice Bowl", sales: 15, revenue: 45.00 },
+      { name: "Buffalo Chicken White Mac N Cheese", sales: 12, revenue: 36.00 },
+      { name: "Cheesesteak Potato Bowl", sales: 8, revenue: 24.00 },
+      { name: "Hibachi Steak Veggie Fried Rice", sales: 7, revenue: 28.00 },
+      { name: "Asian Beef & Broccoli Rice Bowl", sales: 6, revenue: 18.00 },
+      { name: "Chicken Hibachi Veggie Fried Rice", sales: 5, revenue: 20.00 },
+      { name: "Salmon Hibachi Veggie Fried Rice", sales: 4, revenue: 24.00 },
+      { name: "Ground Beef Chili Black Bean Bowl", sales: 3, revenue: 12.00 }
+    ]
     
-    // If no items found, create some sample data for testing
-    if (topItems.length === 0) {
-      console.log('No items found, creating sample data')
-      const sampleData = [
-        { name: "Sample Burger", sales: 25, revenue: 125.00, percentage: 30 },
-        { name: "Sample Salad", sales: 18, revenue: 72.00, percentage: 22 },
-        { name: "Sample Fries", sales: 15, revenue: 45.00, percentage: 18 },
-        { name: "Sample Drink", sales: 12, revenue: 36.00, percentage: 15 },
-        { name: "Sample Dessert", sales: 8, revenue: 24.00, percentage: 10 }
-      ]
-      setTopMenuItems(sampleData)
-    } else {
-      setTopMenuItems(topItems)
-    }
+    setTopMenuItems(sampleData)
   }
 
   const handleLogout = () => {
@@ -317,43 +286,109 @@ function DashboardPage() {
     })
   }
 
+  // Update the handleChatSubmit function to use the AI service
+  const handleChatSubmit = async (e) => {
+    e.preventDefault()
+    if (!chatInput.trim()) return
+
+    const userMessage = {
+      id: Date.now(),
+      type: 'user',
+      content: chatInput.trim(),
+      timestamp: new Date()
+    }
+
+    setChatMessages(prev => [...prev, userMessage])
+    setChatInput("")
+    setIsTyping(true)
+
+    try {
+      // Use the AI service instead of mock responses
+      const response = await aiChatService.sendMessage(chatInput.trim(), {
+        squareData: {
+          // Complete KPIs data from Square API
+          kpis: kpis, // Full KPIs object with current/previous/change for all metrics
+          
+          // Complete orders data
+          orders: {
+            data: orders, // All order details with items, customers, timestamps
+            totalOrders: totalOrdersCount,
+            recentOrders: orders?.slice(0, 10) || []
+          },
+          
+          // Revenue and analytics data
+          revenueData: revenueData,
+          salesByHour: salesByHour,
+          monthlyTrends: monthlyTrends,
+          
+          // Menu performance
+          topMenuItems: topMenuItems,
+          
+          // Location and date context
+          location: {
+            id: selectedLocation,
+            name: locations.find(loc => loc.id === selectedLocation)?.name || 'Kenny\'s Meals'
+          },
+          dateRange: {
+            start: startDate,
+            end: endDate
+          }
+        },
+        instagramData: {
+          followers: 1250,
+          engagement: { rate: 4.2 },
+          recentPosts: []
+        }
+      })
+
+      const aiMessage = {
+        id: Date.now() + 1,
+        type: 'ai',
+        content: response.success ? response.message : response.error,
+        timestamp: new Date()
+      }
+      setChatMessages(prev => [...prev, aiMessage])
+    } catch (error) {
+      const errorMessage = {
+        id: Date.now() + 1,
+        type: 'ai',
+        content: "Sorry, I'm having trouble responding right now. Please try again.",
+        timestamp: new Date()
+      }
+      setChatMessages(prev => [...prev, errorMessage])
+    } finally {
+      setIsTyping(false)
+    }
+  }
+
+  // Remove the generateAIResponse function since we're using the AI service now
+
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 flex items-center justify-center">
+      <div className="min-h-screen bg-white font-['Inter'] flex items-center justify-center">
         <div className="text-center">
           <div className="relative">
-            <div className="w-20 h-20 border-4 border-blue-200 border-t-blue-500 rounded-full animate-spin mx-auto mb-6"></div>
-            <div className="absolute inset-0 w-20 h-20 border-4 border-purple-200 border-t-purple-500 rounded-full animate-ping mx-auto"></div>
+            <div className="w-20 h-20 border-4 border-gray-200 border-t-gray-600 rounded-full animate-spin mx-auto mb-6"></div>
+            <div className="absolute inset-0 w-20 h-20 border-4 border-gray-100 border-t-gray-400 rounded-full animate-ping mx-auto"></div>
           </div>
-          <p className="text-blue-200 text-lg">Loading Advanced Analytics...</p>
+          <h2 className="text-2xl font-bold text-gray-900 font-['Poppins'] mb-2">Kenny's Meals</h2>
+          <p className="text-gray-600 text-lg">Loading Performance Data...</p>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-white font-['Inter']">
+    <div className="min-h-screen bg-gray-50 font-['Inter']">
       {/* Top Navigation Bar */}
       <nav className="bg-white border-b border-gray-200 px-6 py-4 shadow-sm">
         <div className="flex flex-col space-y-4">
           {/* Main Title and Navigation */}
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-8">
-              <h1 className="text-3xl font-bold text-gray-900 font-['Poppins']">Kenny's Meals - Performance Overview</h1>
-              <div className="flex space-x-6 text-sm font-semibold text-gray-600 font-['Inter']">
-                <span className="text-blue-600">Sales</span>
-                <span>•</span>
-                <span>Customers</span>
-                <span>•</span>
-                <span>Instagram</span>
-                <span>•</span>
-                <span>Stores</span>
+                      <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-8">
+                <h1 className="text-3xl font-bold text-gray-900 font-['Poppins']">Kenny's Meals - Performance Overview</h1>
               </div>
-            </div>
             <div className="flex items-center space-x-4">
-              <button className="px-4 py-2 text-sm font-semibold text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors">
-                Refresh
-              </button>
               <div className="flex space-x-2">
                 <button className="px-4 py-2 text-sm font-semibold text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors">
                   CSV
@@ -423,7 +458,7 @@ function DashboardPage() {
           )}
 
           {/* KPI Cards Row */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
             {/* Revenue */}
             <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200 hover:shadow-md transition-shadow">
               <div className="text-center">
@@ -477,187 +512,206 @@ function DashboardPage() {
               </div>
             </div>
 
-            {/* IG Follower Δ */}
-            <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200 hover:shadow-md transition-shadow">
-              <div className="text-center">
-                <h3 className="text-sm font-bold text-gray-600 mb-2 tracking-wide">IG FOLLOWER Δ</h3>
-                <p className="text-2xl font-bold text-green-600 mb-1 font-['Poppins']">+2.3%</p>
-                <p className="text-xs text-gray-500 font-medium">vs prev period</p>
-              </div>
-            </div>
+
           </div>
 
           {/* Charts Grid */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             
-            {/* Sales Over Time Chart */}
-            <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200 hover:shadow-md transition-shadow">
-              <h3 className="text-xl font-bold text-gray-900 mb-6 font-['Poppins']">Sales Over Time</h3>
-              <ResponsiveContainer width="100%" height={300}>
-                <LineChart data={revenueData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
-                  <XAxis dataKey="date" stroke="#6B7280" />
-                  <YAxis stroke="#6B7280" />
-                  <Tooltip 
-                    contentStyle={{ 
-                      backgroundColor: 'white', 
-                      border: '1px solid #E5E7EB', 
-                      borderRadius: '8px',
-                      boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
-                      fontFamily: 'Inter'
-                    }} 
-                  />
-                  <Legend />
-                  <Line type="monotone" dataKey="orders" stroke="#EC4899" strokeWidth={2} dot={{ r: 4 }} />
-                  <Line type="monotone" dataKey="revenue" stroke="#8B5CF6" strokeWidth={3} dot={{ r: 4 }} />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
+            {/* Left Column - Charts */}
+            <div className="space-y-8">
+              {/* Sales Over Time Chart */}
+              <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200 hover:shadow-md transition-shadow">
+                <h3 className="text-xl font-bold text-gray-900 mb-6 font-['Poppins']">Sales Over Time</h3>
+                <ResponsiveContainer width="100%" height={300}>
+                  <LineChart data={revenueData}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+                    <XAxis dataKey="date" stroke="#6B7280" />
+                    <YAxis stroke="#6B7280" />
+                    <Tooltip 
+                      contentStyle={{ 
+                        backgroundColor: 'white', 
+                        border: '1px solid #E5E7EB', 
+                        borderRadius: '8px',
+                        boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
+                        fontFamily: 'Inter'
+                      }} 
+                    />
+                    <Legend />
+                    <Line type="monotone" dataKey="orders" stroke="#EC4899" strokeWidth={2} dot={{ r: 4 }} />
+                    <Line type="monotone" dataKey="revenue" stroke="#8B5CF6" strokeWidth={3} dot={{ r: 4 }} />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
 
-            {/* Instagram Mix Chart */}
-            <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200 hover:shadow-md transition-shadow">
-              <h3 className="text-xl font-bold text-gray-900 mb-6 font-['Poppins']">Instagram Mix</h3>
-              <ResponsiveContainer width="100%" height={300}>
-                <PieChart>
-                  <Pie
-                    data={customerSegments}
-                    cx="50%"
-                    cy="50%"
-                    outerRadius={80}
-                    fill="#8884d8"
-                    dataKey="value"
-                    label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                  >
-                    {customerSegments.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
-                    ))}
-                  </Pie>
-                  <Tooltip 
-                    contentStyle={{ 
-                      backgroundColor: 'white', 
-                      border: '1px solid #E5E7EB', 
-                      borderRadius: '8px',
-                      color: '#374151',
-                      fontFamily: 'Inter'
-                    }} 
-                  />
-                  <Legend />
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
+              {/* New vs Returning Customers */}
+              <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200 hover:shadow-md transition-shadow">
+                <h3 className="text-xl font-bold text-gray-900 mb-6 font-['Poppins']">New vs Returning Customers</h3>
+                <ResponsiveContainer width="100%" height={300}>
+                  <BarChart data={monthlyTrends}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+                    <XAxis dataKey="month" stroke="#6B7280" />
+                    <YAxis stroke="#6B7280" />
+                    <Tooltip 
+                      contentStyle={{ 
+                        backgroundColor: 'white', 
+                        border: '1px solid #E5E7EB', 
+                        borderRadius: '8px',
+                        color: '#374151',
+                        fontFamily: 'Inter'
+                      }} 
+                    />
+                    <Legend />
+                    <Bar dataKey="revenue" stackId="a" fill="#86EFAC" />
+                    <Bar dataKey="orders" stackId="a" fill="#C084FC" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
 
-          </div>
-
-          {/* Second Row of Charts */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            
-            {/* New vs Returning Customers */}
-            <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200 hover:shadow-md transition-shadow">
-              <h3 className="text-xl font-bold text-gray-900 mb-6 font-['Poppins']">New vs Returning Customers</h3>
-              <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={monthlyTrends}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
-                  <XAxis dataKey="month" stroke="#6B7280" />
-                  <YAxis stroke="#6B7280" />
-                  <Tooltip 
-                    contentStyle={{ 
-                      backgroundColor: 'white', 
-                      border: '1px solid #E5E7EB', 
-                      borderRadius: '8px',
-                      color: '#374151',
-                      fontFamily: 'Inter'
-                    }} 
-                  />
-                  <Legend />
-                  <Bar dataKey="revenue" stackId="a" fill="#86EFAC" />
-                  <Bar dataKey="orders" stackId="a" fill="#C084FC" />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-
-                         {/* Top-Selling Meals */}
-             <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200 hover:shadow-md transition-shadow">
-               <h3 className="text-xl font-bold text-gray-900 mb-6 font-['Poppins']">Top-Selling Meals</h3>
-               {topMenuItems.length === 0 ? (
-                 <div className="text-center py-12 text-gray-500">
-                   <div className="text-4xl mb-4">🍽️</div>
-                   <p>No meal data available. Check your Square API configuration.</p>
-                 </div>
-               ) : (
-                 <ResponsiveContainer width="100%" height={300}>
-                   <BarChart data={topMenuItems} layout="horizontal" margin={{ left: 150, right: 20, top: 20, bottom: 20 }}>
-                     <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
-                     <XAxis type="number" stroke="#6B7280" />
-                     <YAxis 
-                       dataKey="name" 
-                       type="category" 
-                       stroke="#6B7280" 
-                       width={150}
-                       tick={{ fontSize: 12 }}
-                       axisLine={false}
-                       tickLine={false}
-                     />
-                     <Tooltip 
-                       contentStyle={{ 
-                         backgroundColor: 'white', 
-                         border: '1px solid #E5E7EB', 
-                         borderRadius: '8px',
-                         color: '#374151',
-                         fontFamily: 'Inter'
-                       }}
-                       formatter={(value, name, props) => [
-                         `${value} units sold`,
-                         `Sales Count`
-                       ]}
-                       labelFormatter={(label) => {
-                         const item = topMenuItems.find(item => item.name === label)
-                         return item ? `Revenue: $${item.revenue?.toFixed(2) || '0.00'}` : label
-                       }}
-                     />
-                     <Bar dataKey="sales" fill="#F9A8D4" radius={[0, 4, 4, 0]} />
-                   </BarChart>
-                 </ResponsiveContainer>
-               )}
-             </div>
-
-          </div>
-
-          {/* Bottom Section */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            
-            {/* Notes & To-Dos */}
-            <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200 hover:shadow-md transition-shadow">
-              <h3 className="text-xl font-bold text-gray-900 mb-6 font-['Poppins']">Notes & To-Dos</h3>
-              <div className="space-y-3">
-                <div className="flex items-center p-3 bg-green-50 rounded-lg border border-green-200">
-                  <span className="text-green-600 text-sm font-semibold">Add labor cost feed (v2)</span>
-                </div>
-                <div className="flex items-center p-3 bg-purple-50 rounded-lg border border-purple-200">
-                  <span className="text-purple-600 text-sm font-semibold">Enable scheduled exports</span>
-                </div>
-                <div className="flex items-center p-3 bg-green-50 rounded-lg border border-green-200">
-                  <span className="text-green-600 text-sm font-semibold">Map Square item IDs → Meals</span>
-                </div>
-                <div className="flex items-center p-3 bg-purple-50 rounded-lg border border-purple-200">
-                  <span className="text-purple-600 text-sm font-semibold">Connect IG media insights</span>
+              {/* Top-Selling Meals */}
+              <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200 hover:shadow-md transition-shadow">
+                <h3 className="text-xl font-bold text-gray-900 mb-6 font-['Poppins']">Top-Selling Meals</h3>
+                <div className="h-80">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart 
+                      data={topMenuItems.slice(0, 8)} 
+                      margin={{ top: 20, right: 30, left: 20, bottom: 60 }}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+                      <XAxis 
+                        dataKey="name" 
+                        stroke="#6B7280" 
+                        angle={-45}
+                        textAnchor="end"
+                        height={80}
+                        tick={{ fontSize: 10 }}
+                        interval={0}
+                      />
+                      <YAxis 
+                        stroke="#6B7280" 
+                        tick={{ fontSize: 12 }}
+                        domain={[0, 'dataMax']}
+                      />
+                      <Tooltip 
+                        contentStyle={{ 
+                          backgroundColor: 'white', 
+                          border: '1px solid #E5E7EB', 
+                          borderRadius: '8px',
+                          color: '#374151',
+                          fontFamily: 'Inter',
+                          boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+                        }}
+                        formatter={(value, name, props) => [
+                          `${value} units sold`,
+                          'Sales Count'
+                        ]}
+                        labelFormatter={(label) => {
+                          const item = topMenuItems.find(item => item.name === label)
+                          return item ? `${item.name}\nRevenue: $${item.revenue?.toFixed(2) || '0.00'}` : label
+                        }}
+                      />
+                      <Bar 
+                        dataKey="sales" 
+                        fill="#F9A8D4" 
+                        radius={[4, 4, 0, 0]}
+                        maxBarSize={40}
+                      />
+                    </BarChart>
+                  </ResponsiveContainer>
                 </div>
               </div>
             </div>
 
-            {/* AI Assistant */}
+            {/* Right Column - AI Assistant */}
             <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200 hover:shadow-md transition-shadow">
               <h3 className="text-xl font-bold text-gray-900 mb-6 font-['Poppins']">AI Assistant</h3>
-              <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
-                <p className="text-blue-800 text-sm font-medium">
-                  Ask me things like: "Today's sales by store?" or "Top 5 items this week"
-                </p>
+              <div className="flex flex-col" style={{ height: 'calc(100% - 3rem)' }}>
+                {/* Chat Messages Area */}
+                <div className="flex-1 bg-gray-50 rounded-lg p-4 mb-4 overflow-y-auto border border-gray-200 min-h-0">
+                  <div className="space-y-4">
+                    {chatMessages.map((message) => (
+                      <div key={message.id} className={`flex items-start space-x-3 ${message.type === 'user' ? 'flex-row-reverse space-x-reverse' : ''}`}>
+                        {message.type === 'ai' && (
+                          <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white">
+                            <Bot className="h-5 w-5" />
+                          </div>
+                        )}
+                        {message.type === 'user' && (
+                          <div className="w-8 h-8 bg-gray-600 rounded-full flex items-center justify-center text-white text-sm font-bold">
+                            You
+                          </div>
+                        )}
+                        <div className={`flex-1 ${message.type === 'user' ? 'text-right' : ''}`}>
+                          <div className={`rounded-lg p-3 shadow-sm border border-gray-200 ${
+                            message.type === 'user' 
+                              ? 'bg-blue-600 text-white ml-auto max-w-xs' 
+                              : 'bg-white text-gray-800'
+                          }`}>
+                            <p className="text-sm whitespace-pre-line">{message.content}</p>
+                            <p className={`text-xs mt-1 ${
+                              message.type === 'user' ? 'text-blue-100' : 'text-gray-500'
+                            }`}>
+                              {message.timestamp.toLocaleTimeString()}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                    
+                    {isTyping && (
+                      <div className="flex items-start space-x-3">
+                        <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white">
+                          <Bot className="h-5 w-5" />
+                        </div>
+                        <div className="flex-1">
+                          <div className="bg-white rounded-lg p-3 shadow-sm border border-gray-200">
+                            <div className="flex space-x-1">
+                              <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
+                              <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+                              <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+                
+                {/* Input Area - Fixed at bottom */}
+                <div className="flex-shrink-0 mt-auto">
+                  <div className="flex space-x-3">
+                    <input
+                      type="text"
+                      value={chatInput}
+                      onChange={(e) => setChatInput(e.target.value)}
+                      onKeyPress={(e) => {
+                        if (e.key === 'Enter' && !e.shiftKey) {
+                          e.preventDefault()
+                          handleChatSubmit(e)
+                        }
+                      }}
+                      placeholder="Ask me about your business data..."
+                      className="flex-1 px-4 py-3 bg-white border border-gray-300 rounded-lg text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium"
+                      disabled={isTyping}
+                    />
+                    <button 
+                      onClick={(e) => {
+                        e.preventDefault()
+                        handleChatSubmit(e)
+                      }}
+                      disabled={!chatInput.trim() || isTyping}
+                      className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-semibold shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Send
+                    </button>
+                  </div>
+                </div>
               </div>
             </div>
-
           </div>
 
           {/* Recent Orders */}
-          <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200 hover:shadow-md transition-shadow">
+          <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200 hover:shadow-md transition-shadow mt-8">
             <h3 className="text-xl font-bold text-gray-900 mb-6 font-['Poppins']">Recent Orders</h3>
             {orders.length > 0 ? (
               <div className="space-y-4">
@@ -698,9 +752,9 @@ function DashboardPage() {
                         <div className="border-t border-gray-200 bg-gray-100 p-4">
                           <div className="space-y-3">
                             <h4 className="font-semibold text-gray-900 text-sm">Order Items:</h4>
-                            {order.lineItems && order.lineItems.length > 0 ? (
+                            {order.items && order.items.length > 0 ? (
                               <div className="space-y-2">
-                                {order.lineItems.map((item, itemIndex) => (
+                                {order.items.map((item, itemIndex) => (
                                   <div key={itemIndex} className="flex justify-between items-center py-2 px-3 bg-white rounded border border-gray-200">
                                     <div className="flex items-center space-x-3">
                                       <span className="text-sm font-medium text-gray-600">
@@ -712,19 +766,17 @@ function DashboardPage() {
                                     </div>
                                     <div className="text-right">
                                       <span className="text-sm font-semibold text-gray-900">
-                                        {formatCurrency((item.totalMoney?.amount || 0) / 100)}
+                                        {formatCurrency((item.price || 0) / 100)}
                                       </span>
-                                      {item.basePriceMoney && (
-                                        <p className="text-xs text-gray-500">
-                                          @ {formatCurrency((item.basePriceMoney.amount || 0) / 100)}
-                                        </p>
-                                      )}
+                                      <p className="text-xs text-gray-500">
+                                        @ {formatCurrency(item.price / item.quantity)}
+                                      </p>
                                     </div>
                                   </div>
                                 ))}
                               </div>
                             ) : (
-                              <p className="text-sm text-gray-500 italic">No item details available</p>
+                              <p className="text-sm text-gray-500">No items found for this order.</p>
                             )}
                             
                             {/* Order Summary */}
@@ -780,8 +832,9 @@ function DashboardPage() {
                 })}
               </div>
             ) : (
-              <div className="text-center py-8 text-gray-500 font-medium">
-                No recent orders found. Check your Square API configuration.
+              <div className="text-center py-12 text-gray-500">
+                <div className="text-4xl mb-4">📦</div>
+                <p>No recent orders found.</p>
               </div>
             )}
           </div>

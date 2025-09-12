@@ -39,22 +39,22 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary-50 via-mint-50 to-pink-50 px-4">
+    <div className="min-h-screen bg-white font-['Inter'] flex items-center justify-center px-4">
       <div className="max-w-md w-full space-y-8">
         {/* Header */}
         <div className="text-center">
-          <div className="mx-auto h-16 w-16 bg-gradient-to-r from-primary-600 to-mint-500 rounded-full flex items-center justify-center mb-4">
-            <ChefHat className="h-8 w-8 text-white" />
+          <div className="mx-auto h-16 w-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+            <ChefHat className="h-8 w-8 text-gray-600" />
           </div>
-          <h2 className="text-3xl font-display font-bold text-gray-900">Kenny's Meals</h2>
-          <p className="mt-2 text-sm text-muted-foreground">Sign in to your dashboard</p>
+          <h2 className="text-3xl font-bold text-gray-900 font-['Poppins']">Kenny's Meals</h2>
+          <p className="mt-2 text-sm text-gray-600">Sign in to your dashboard</p>
         </div>
 
         {/* Login Form */}
-        <div className="card p-8">
+        <div className="bg-white rounded-xl shadow-sm p-8 border border-gray-200">
           <form className="space-y-6" onSubmit={handleSubmit}>
             {error && (
-              <div className="bg-destructive/10 border border-destructive/20 text-destructive px-4 py-3 rounded-md text-sm">
+              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md text-sm">
                 {error}
               </div>
             )}
@@ -65,14 +65,14 @@ export default function LoginPage() {
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Mail className="h-5 w-5 text-muted-foreground" />
+                  <Mail className="h-5 w-5 text-gray-400" />
                 </div>
                 <input
                   id="email"
                   name="email"
                   type="email"
                   required
-                  className="input pl-10"
+                  className="w-full px-3 py-2 pl-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent"
                   placeholder="kenny@meals.com"
                   value={formData.email}
                   onChange={handleChange}
@@ -86,14 +86,14 @@ export default function LoginPage() {
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Lock className="h-5 w-5 text-muted-foreground" />
+                  <Lock className="h-5 w-5 text-gray-400" />
                 </div>
                 <input
                   id="password"
                   name="password"
                   type={showPassword ? "text" : "password"}
                   required
-                  className="input pl-10 pr-10"
+                  className="w-full px-3 py-2 pl-10 pr-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent"
                   placeholder="Enter your password"
                   value={formData.password}
                   onChange={handleChange}
@@ -104,21 +104,25 @@ export default function LoginPage() {
                   onClick={() => setShowPassword(!showPassword)}
                 >
                   {showPassword ? (
-                    <EyeOff className="h-5 w-5 text-muted-foreground" />
+                    <EyeOff className="h-5 w-5 text-gray-400" />
                   ) : (
-                    <Eye className="h-5 w-5 text-muted-foreground" />
+                    <Eye className="h-5 w-5 text-gray-400" />
                   )}
                 </button>
               </div>
             </div>
 
-            <button type="submit" disabled={loading} className="btn-primary w-full">
+            <button 
+              type="submit" 
+              disabled={loading} 
+              className="w-full bg-gray-900 text-white py-2 px-4 rounded-lg font-semibold hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
               {loading ? "Signing in..." : "Sign in"}
             </button>
           </form>
 
           <div className="mt-6 text-center">
-            <p className="text-xs text-muted-foreground">Demo credentials: kenny@meals.com / dashboard123</p>
+            <p className="text-xs text-gray-500">Demo credentials: kenny@meals.com / dashboard123</p>
           </div>
         </div>
       </div>
