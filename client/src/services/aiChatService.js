@@ -1,6 +1,6 @@
 class AIChatService {
   constructor() {
-    this.backendURL = "http://localhost:5001/api" // Backend API URL
+    this.backendURL = "http://localhost:5000/api" // Backend API URL
   }
 
   async sendMessage(message, context = {}) {

@@ -75,8 +75,12 @@ export default function Sidebar({ sidebarOpen, setSidebarOpen }) {
                             <div className="flex h-16 shrink-0 items-center">
             <div className="flex flex-col items-start space-y-1">
               <div className="flex items-center space-x-3">
-                <div className="h-8 w-8 bg-gradient-to-r from-primary-600 to-mint-500 rounded-lg flex items-center justify-center">
-                  <ChefHatIcon className="h-5 w-5 text-white" />
+                <div className="h-8 w-8 rounded-lg flex items-center justify-center">
+                  <img 
+                    src="/logo.png" 
+                    alt="Kenny's Meals Logo" 
+                    className="h-8 w-8 object-contain"
+                  />
                 </div>
                 <span className="text-xl font-display font-bold text-gray-900">Kenny's Analytics Hub</span>
               </div>
@@ -129,8 +133,12 @@ export default function Sidebar({ sidebarOpen, setSidebarOpen }) {
           <div className="flex h-16 shrink-0 items-center">
             <div className="flex flex-col items-start space-y-1">
               <div className="flex items-center space-x-3">
-                <div className="h-10 w-10 bg-gradient-to-r from-primary-600 to-mint-500 rounded-xl flex items-center justify-center">
-                  <ChefHatIcon className="h-6 w-6 text-white" />
+                <div className="h-10 w-10 rounded-xl flex items-center justify-center">
+                  <img 
+                    src="/logo.png" 
+                    alt="Kenny's Meals Logo" 
+                    className="h-10 w-10 object-contain"
+                  />
                 </div>
                 <span className="text-2xl font-display font-bold text-gray-900">Kenny's Analytics Hub</span>
               </div>

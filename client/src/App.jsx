@@ -63,8 +63,12 @@ function LoginPage() {
       <div className="max-w-md w-full space-y-8">
         {/* Header */}
         <div className="text-center">
-          <div className="mx-auto h-16 w-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
-            <ChefHat className="h-8 w-8 text-gray-600" />
+          <div className="mx-auto h-16 w-16 rounded-full flex items-center justify-center mb-4">
+            <img 
+              src="/logo.png" 
+              alt="Kenny's Meals Logo" 
+              className="h-16 w-16 object-contain"
+            />
           </div>
           <h2 className="text-3xl font-bold text-gray-900 font-['Poppins']">Kenny's Analytics Hub</h2>
           <p className="mt-2 text-sm text-gray-600">Sign in to your dashboard</p>
@@ -123,6 +127,7 @@ function DashboardPage() {
   const [topMenuItems, setTopMenuItems] = useState([])
 
   const [monthlyTrends, setMonthlyTrends] = useState([])
+  const [customerAnalytics, setCustomerAnalytics] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
   const [selectedLocation, setSelectedLocation] = useState("LNBR73NZB7NGD") // Default: Lawrence
@@ -161,34 +166,77 @@ function DashboardPage() {
   useEffect(() => {
     fetchSquareData()
     // eslint-disable-next-line
-  }, [selectedLocation, startDate, endDate]) // refetch when location changes
+  }, [selectedLocation, startDate, endDate]) // refetch when location or date changes
+
+  // Recalculate top selling meals whenever orders data changes
+  useEffect(() => {
+    console.log('useEffect triggered for top selling meals:', {
+      ordersLength: orders?.length || 0,
+      startDate,
+      endDate,
+      ordersData: orders?.slice(0, 2) // Show first 2 orders for debugging
+    })
+    
+    if (orders && orders.length > 0) {
+      console.log('Recalculating top selling meals due to orders change')
+      generateTopSellingMeals(orders)
+    } else if (orders && orders.length === 0) {
+      console.log('No orders available, using fallback data')
+      generateTopSellingMeals([])
+    }
+  }, [orders, startDate, endDate]) // Recalculate when orders or date range changes
 
   const fetchSquareData = async () => {
     try {
       setLoading(true)
       setError("")
+      
+      // Clear top menu items when fetching new data
+      setTopMenuItems([])
+      
+      console.log('Fetching Square data for date range:', {
+        startDate,
+        endDate,
+        selectedLocation
+      })
+      
       // Pass locationId, startDate, endDate as query params
       const kpiResponse = await fetch(
-        `http://localhost:5001/api/square/kpis?locationId=${selectedLocation}&startDate=${startDate}&endDate=${endDate}`
+        `http://localhost:5000/api/square/kpis?locationId=${selectedLocation}&startDate=${startDate}&endDate=${endDate}`
       )
       const kpiData = await kpiResponse.json()
       console.log('KPI Response:', kpiData)
       
       const ordersResponse = await fetch(
-        `http://localhost:5001/api/square/orders?limit=100&locationId=${selectedLocation}&startDate=${startDate}&endDate=${endDate}`
+        `http://localhost:5000/api/square/orders?locationId=${selectedLocation}&startDate=${startDate}&endDate=${endDate}`
       )
       const ordersData = await ordersResponse.json()
       console.log('Orders Response:', ordersData)
+      console.log('Number of orders received:', ordersData.data?.length || 0)
+      console.log('Sample order structure:', ordersData.data?.[0])
+      
+      // Fetch customer analytics
+      const customerResponse = await fetch(
+        `http://localhost:5000/api/square/analytics/customers?locationId=${selectedLocation}&startDate=${startDate}&endDate=${endDate}`
+      )
+      const customerData = await customerResponse.json()
+      console.log('Customer Analytics Response:', customerData)
       
       if (kpiData.success) setKpis(kpiData.data)
       if (ordersData.success) {
         setOrders(ordersData.data)
         setTotalOrdersCount(ordersData.totalOrders || ordersData.data.length)
-        // Generate top selling meals from actual Square data
-        generateTopSellingMeals(ordersData.data)
+        // Top selling meals will be calculated by useEffect when orders change
       } else {
         console.log('Orders API call failed, creating sample data')
-        generateTopSellingMeals([])
+        setOrders([])
+      }
+      
+      if (customerData.success) {
+        setCustomerAnalytics(customerData.data)
+      } else {
+        console.log('Customer Analytics API call failed, using mock data')
+        generateMockCustomerAnalytics()
       }
       
       generateMockAnalytics()
@@ -197,6 +245,7 @@ function DashboardPage() {
       setError('Failed to load Square data. Check your API configuration.')
       // Create sample data if API fails
       generateTopSellingMeals([])
+      generateMockCustomerAnalytics()
     } finally {
       setLoading(false)
     }
@@ -233,24 +282,200 @@ function DashboardPage() {
     setMonthlyTrends(trends)
   }
 
+  const generateMockCustomerAnalytics = () => {
+    // Generate mock customer analytics data
+    const customerData = Array.from({ length: 30 }, (_, i) => {
+      const date = new Date(Date.now() - (29 - i) * 24 * 60 * 60 * 1000)
+      return {
+        date: date.toISOString().split("T")[0],
+        newCustomers: Math.floor(Math.random() * 20) + 5,
+        returningCustomers: Math.floor(Math.random() * 15) + 10,
+        totalCustomers: Math.floor(Math.random() * 35) + 15,
+      }
+    })
+    setCustomerAnalytics(customerData)
+  }
+
   const generateTopSellingMeals = (ordersData) => {
-    console.log('generateTopSellingMeals called with:', ordersData)
+    console.log('=== generateTopSellingMeals called ===')
+    console.log('Orders data length:', ordersData?.length, 'orders')
+    console.log('Time period for top selling meals:', { startDate, endDate })
     
-    // Always create sample data for now to ensure chart works
-    const sampleData = [
-      { name: "BBQ Chicken & Roasted Potatoes", sales: 25, revenue: 125.00 },
-      { name: "Protein Oats Strawberry Cheesecake", sales: 18, revenue: 72.00 },
-      { name: "Spiced Ground Turkey Rice Bowl", sales: 15, revenue: 45.00 },
-      { name: "Buffalo Chicken White Mac N Cheese", sales: 12, revenue: 36.00 },
-      { name: "Cheesesteak Potato Bowl", sales: 8, revenue: 24.00 },
-      { name: "Hibachi Steak Veggie Fried Rice", sales: 7, revenue: 28.00 },
-      { name: "Asian Beef & Broccoli Rice Bowl", sales: 6, revenue: 18.00 },
-      { name: "Chicken Hibachi Veggie Fried Rice", sales: 5, revenue: 20.00 },
-      { name: "Salmon Hibachi Veggie Fried Rice", sales: 4, revenue: 24.00 },
-      { name: "Ground Beef Chili Black Bean Bowl", sales: 3, revenue: 12.00 }
-    ]
+    if (!ordersData || ordersData.length === 0) {
+      console.log('No orders data, using fallback')
+      const sampleData = [
+        { name: "BBQ Chicken & Roasted Potatoes", sales: 25, revenue: 125.00 },
+        { name: "Protein Oats Strawberry Cheesecake", sales: 18, revenue: 72.00 },
+        { name: "Spiced Ground Turkey Rice Bowl", sales: 15, revenue: 45.00 },
+        { name: "Buffalo Chicken White Mac N Cheese", sales: 12, revenue: 36.00 },
+        { name: "Cheesesteak Potato Bowl", sales: 8, revenue: 24.00 }
+      ]
+      setTopMenuItems(sampleData)
+      return
+    }
+
+    // Filter orders by the selected date range to ensure accuracy
+    const startDateObj = new Date(startDate)
+    const endDateObj = new Date(endDate)
+    endDateObj.setHours(23, 59, 59, 999) // Include the entire end date
+
+    const filteredOrders = ordersData.filter(order => {
+      const orderDate = new Date(order.createdAt || order.timestamp)
+      return orderDate >= startDateObj && orderDate <= endDateObj
+    })
+
+    console.log('Orders after date filtering:', {
+      originalCount: ordersData.length,
+      filteredCount: filteredOrders.length,
+      dateRange: `${startDate} to ${endDate}`
+    })
+
+    if (filteredOrders.length === 0) {
+      console.log('No orders in selected date range, using fallback')
+      const sampleData = [
+        { name: "BBQ Chicken & Roasted Potatoes", sales: 25, revenue: 125.00 },
+        { name: "Protein Oats Strawberry Cheesecake", sales: 18, revenue: 72.00 },
+        { name: "Spiced Ground Turkey Rice Bowl", sales: 15, revenue: 45.00 },
+        { name: "Buffalo Chicken White Mac N Cheese", sales: 12, revenue: 36.00 },
+        { name: "Cheesesteak Potato Bowl", sales: 8, revenue: 24.00 }
+      ]
+      setTopMenuItems(sampleData)
+      return
+    }
+
+    // Create hashmap with meal names as keys and [totalRevenue, totalOrders, totalQuantity] as values
+    const mealStats = new Map()
+    let totalOrdersProcessed = 0
+    let totalItemsProcessed = 0
+    let ordersWithItems = 0
     
-    setTopMenuItems(sampleData)
+    console.log('Processing filtered orders for top-selling analysis:', filteredOrders.length, 'orders')
+    
+    // Sample a few orders to understand the data structure
+    if (filteredOrders.length > 0) {
+      console.log('Sample filtered order structure:', filteredOrders[0])
+    }
+    
+    filteredOrders.forEach((order, orderIndex) => {
+      totalOrdersProcessed++
+      
+      // Get items from the order (try multiple possible field names)
+      let items = []
+      if (order.items && Array.isArray(order.items)) {
+        items = order.items
+      } else if (order.lineItems && Array.isArray(order.lineItems)) {
+        items = order.lineItems
+      } else if (order.line_items && Array.isArray(order.line_items)) {
+        items = order.line_items
+      }
+      
+      if (items && items.length > 0) {
+        ordersWithItems++
+        
+        // Track which meals are in this order to avoid double-counting orders
+        const mealsInThisOrder = new Set()
+        
+        items.forEach((item, itemIndex) => {
+          totalItemsProcessed++
+          
+          // Extract meal name with fallbacks
+          const mealName = item.name || 
+                          item.display_name || 
+                          item.catalog_object_id || 
+                          `Item ${item.catalog_object_id || itemIndex}` ||
+                          'Unknown Item'
+          
+          // Filter out gift cards - only process actual meals
+          const isGiftCard = mealName.toLowerCase().includes('gift card') ||
+                            mealName.toLowerCase().includes('giftcard') ||
+                            mealName.toLowerCase().includes('gift') ||
+                            item.catalog_object_id?.toLowerCase().includes('gift') ||
+                            item.variation_name?.toLowerCase().includes('gift')
+          
+          if (isGiftCard) {
+            console.log('Skipping gift card item:', mealName)
+            return // Skip this item
+          }
+          
+          // Extract quantity and price
+          const quantity = parseInt(item.quantity) || 1
+          const price = parseFloat(item.price) || 
+                       parseFloat(item.total_money?.amount) / 100 || 
+                       parseFloat(item.base_price_money?.amount) / 100 || 
+                       0
+          
+          const itemRevenue = quantity * price
+          
+          // Debug first few items
+          if (orderIndex < 3 && itemIndex < 2) {
+            console.log('Processing meal item:', {
+              mealName,
+              quantity,
+              price,
+              itemRevenue,
+              originalItem: item
+            })
+          }
+          
+          // Update hashmap: [totalRevenue, totalOrders, totalQuantity]
+          if (mealStats.has(mealName)) {
+            const currentStats = mealStats.get(mealName)
+            const isNewOrderForThisMeal = !mealsInThisOrder.has(mealName)
+            
+            mealStats.set(mealName, [
+              currentStats[0] + itemRevenue,  // Add to total revenue
+              currentStats[1] + (isNewOrderForThisMeal ? 1 : 0), // Add 1 to order count only if this is a new order for this meal
+              currentStats[2] + quantity      // Add to total quantity sold
+            ])
+          } else {
+            mealStats.set(mealName, [itemRevenue, 1, quantity]) // First time seeing this meal = 1 order
+          }
+          
+          // Mark this meal as seen in this order
+          mealsInThisOrder.add(mealName)
+        })
+      }
+    })
+    
+    console.log('Analysis complete:', {
+      totalOrdersProcessed,
+      totalItemsProcessed,
+      ordersWithItems,
+      uniqueMeals: mealStats.size,
+      mealStats: Object.fromEntries(mealStats)
+    })
+    
+    // Convert hashmap to array and sort by revenue (descending)
+    const topMeals = Array.from(mealStats.entries())
+      .map(([mealName, [totalRevenue, totalOrders, totalQuantity]]) => ({
+        name: mealName,
+        sales: totalQuantity,  // Total quantity sold (what we want to display)
+        revenue: totalRevenue, // Total revenue
+        orders: totalOrders // Total number of orders (for debugging)
+      }))
+      .sort((a, b) => b.revenue - a.revenue) // Sort by revenue (highest first)
+      .slice(0, 5) // Get top 5 meals
+
+    console.log('Top 5 meals by revenue:', topMeals)
+    
+    // If we have real data, use it; otherwise fall back to sample
+    if (topMeals.length > 0 && topMeals[0].revenue > 0) {
+      console.log('Using real data for top-selling meals')
+      console.log('Setting topMenuItems to:', topMeals)
+      setTopMenuItems(topMeals)
+      console.log('✅ topMenuItems state updated with real data')
+    } else {
+      console.log('No valid items found, using fallback data')
+      const sampleData = [
+        { name: "BBQ Chicken & Roasted Potatoes", sales: 25, revenue: 125.00 },
+        { name: "Protein Oats Strawberry Cheesecake", sales: 18, revenue: 72.00 },
+        { name: "Spiced Ground Turkey Rice Bowl", sales: 15, revenue: 45.00 },
+        { name: "Buffalo Chicken White Mac N Cheese", sales: 12, revenue: 36.00 },
+        { name: "Cheesesteak Potato Bowl", sales: 8, revenue: 24.00 }
+      ]
+      setTopMenuItems(sampleData)
+      console.log('✅ topMenuItems state updated with fallback data')
+    }
   }
 
   const handleLogout = () => {
@@ -466,7 +691,6 @@ function DashboardPage() {
                 <p className="text-2xl font-bold text-gray-900 mb-1 font-['Poppins']">
                   {kpis ? formatCurrency(kpis.revenue.current) : '$14,802'}
                 </p>
-                <p className="text-xs text-gray-500 font-medium">7d</p>
               </div>
             </div>
 
@@ -499,7 +723,6 @@ function DashboardPage() {
                 <p className="text-2xl font-bold text-gray-900 mb-1 font-['Poppins']">
                   {kpis ? kpis.customers.current.toLocaleString() : '272'}
                 </p>
-                <p className="text-xs text-gray-500 font-medium">Last 7 days</p>
               </div>
             </div>
 
@@ -507,7 +730,9 @@ function DashboardPage() {
             <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200 hover:shadow-md transition-shadow">
               <div className="text-center">
                 <h3 className="text-sm font-bold text-gray-600 mb-2 tracking-wide">RETURNING %</h3>
-                <p className="text-2xl font-bold text-gray-900 mb-1 font-['Poppins']">63.2%</p>
+                <p className="text-2xl font-bold text-gray-900 mb-1 font-['Poppins']">
+                  {kpis ? `${kpis.returningCustomerRate?.current || 0}%` : '63.2%'}
+                </p>
                 <p className="text-xs text-gray-500 font-medium">Cohort</p>
               </div>
             </div>
@@ -548,9 +773,13 @@ function DashboardPage() {
               <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200 hover:shadow-md transition-shadow">
                 <h3 className="text-xl font-bold text-gray-900 mb-6 font-['Poppins']">New vs Returning Customers</h3>
                 <ResponsiveContainer width="100%" height={300}>
-                  <BarChart data={monthlyTrends}>
+                  <BarChart data={customerAnalytics}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
-                    <XAxis dataKey="month" stroke="#6B7280" />
+                    <XAxis 
+                      dataKey="date" 
+                      stroke="#6B7280" 
+                      tickFormatter={(value) => new Date(value).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                    />
                     <YAxis stroke="#6B7280" />
                     <Tooltip 
                       contentStyle={{ 
@@ -559,65 +788,106 @@ function DashboardPage() {
                         borderRadius: '8px',
                         color: '#374151',
                         fontFamily: 'Inter'
-                      }} 
+                      }}
+                      labelFormatter={(value) => new Date(value).toLocaleDateString('en-US', { 
+                        month: 'long', 
+                        day: 'numeric', 
+                        year: 'numeric' 
+                      })}
                     />
                     <Legend />
-                    <Bar dataKey="revenue" stackId="a" fill="#86EFAC" />
-                    <Bar dataKey="orders" stackId="a" fill="#C084FC" />
+                    <Bar dataKey="newCustomers" stackId="a" fill="#10B981" name="New Customers" />
+                    <Bar dataKey="returningCustomers" stackId="a" fill="#8B5CF6" name="Returning Customers" />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
 
               {/* Top-Selling Meals */}
-              <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200 hover:shadow-md transition-shadow">
-                <h3 className="text-xl font-bold text-gray-900 mb-6 font-['Poppins']">Top-Selling Meals</h3>
-                <div className="h-80">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart 
-                      data={topMenuItems.slice(0, 8)} 
-                      margin={{ top: 20, right: 30, left: 20, bottom: 60 }}
-                    >
-                      <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
-                      <XAxis 
-                        dataKey="name" 
-                        stroke="#6B7280" 
-                        angle={-45}
-                        textAnchor="end"
-                        height={80}
-                        tick={{ fontSize: 10 }}
-                        interval={0}
-                      />
-                      <YAxis 
-                        stroke="#6B7280" 
-                        tick={{ fontSize: 12 }}
-                        domain={[0, 'dataMax']}
-                      />
-                      <Tooltip 
-                        contentStyle={{ 
-                          backgroundColor: 'white', 
-                          border: '1px solid #E5E7EB', 
-                          borderRadius: '8px',
-                          color: '#374151',
-                          fontFamily: 'Inter',
-                          boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
-                        }}
-                        formatter={(value, name, props) => [
-                          `${value} units sold`,
-                          'Sales Count'
-                        ]}
-                        labelFormatter={(label) => {
-                          const item = topMenuItems.find(item => item.name === label)
-                          return item ? `${item.name}\nRevenue: $${item.revenue?.toFixed(2) || '0.00'}` : label
-                        }}
-                      />
-                      <Bar 
-                        dataKey="sales" 
-                        fill="#F9A8D4" 
-                        radius={[4, 4, 0, 0]}
-                        maxBarSize={40}
-                      />
-                    </BarChart>
-                  </ResponsiveContainer>
+              <div key={`top-meals-${startDate}-${endDate}`} className="bg-white rounded-xl shadow-sm p-6 border border-gray-200 hover:shadow-md transition-shadow">
+                <div className="flex items-center justify-between mb-6">
+                  <h3 className="text-xl font-bold text-gray-900 font-['Poppins']">Top 5 Selling Meals</h3>
+                  <div className="text-sm text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
+                    {new Date(startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - {new Date(endDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                  </div>
+                </div>
+                {console.log('Chart data (topMenuItems):', topMenuItems.slice(0, 5))}
+                
+                <div className="space-y-4">
+                  {topMenuItems.slice(0, 5).map((item, index) => (
+                    <div key={item.name} className="bg-gradient-to-r from-gray-50 to-white rounded-lg border border-gray-200 p-4 hover:shadow-md transition-all duration-200">
+                      <div className="flex items-start justify-between gap-4">
+                        {/* Rank and Item Info */}
+                        <div className="flex items-start space-x-4 flex-1 min-w-0">
+                          <div className="flex-shrink-0">
+                            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-sm ${
+                              index === 0 ? 'bg-yellow-500' : 
+                              index === 1 ? 'bg-gray-400' : 
+                              index === 2 ? 'bg-amber-600' : 
+                              'bg-gray-300'
+                            }`}>
+                              {index + 1}
+                            </div>
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <h4 className="text-lg font-semibold text-gray-900 font-['Inter'] break-words leading-tight">
+                              {item.name}
+                            </h4>
+                            <p className="text-sm text-gray-500 mt-1">
+                              {index === 0 ? '🥇 Best Seller' : 
+                               index === 1 ? '🥈 Runner Up' : 
+                               index === 2 ? '🥉 Third Place' : 
+                               `#${index + 1} Top Seller`}
+                            </p>
+                          </div>
+                        </div>
+                        
+                        {/* Stats - Fixed width to prevent overflow */}
+                        <div className="flex items-center space-x-6 flex-shrink-0">
+                          <div className="text-center min-w-[80px]">
+                            <p className="text-2xl font-bold text-gray-900 font-['Poppins']">
+                              {item.sales?.toLocaleString() || 0}
+                            </p>
+                            <p className="text-xs text-gray-500 font-medium">Quantity</p>
+                          </div>
+                          <div className="text-center min-w-[100px]">
+                            <p className="text-2xl font-bold text-green-600 font-['Poppins']">
+                              {formatCurrency(item.revenue || 0)}
+                            </p>
+                            <p className="text-xs text-gray-500 font-medium">Revenue</p>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      {/* Progress Bar */}
+                      <div className="mt-3">
+                        <div className="flex items-center justify-between text-xs text-gray-500 mb-1">
+                          <span>Performance</span>
+                          <span>{Math.round((item.sales / (topMenuItems[0]?.sales || 1)) * 100)}% of top seller</span>
+                        </div>
+                        <div className="w-full bg-gray-200 rounded-full h-2">
+                          <div 
+                            className={`h-2 rounded-full transition-all duration-500 ${
+                              index === 0 ? 'bg-yellow-500' : 
+                              index === 1 ? 'bg-gray-400' : 
+                              index === 2 ? 'bg-amber-600' : 
+                              'bg-blue-500'
+                            }`}
+                            style={{ 
+                              width: `${Math.min((item.sales / (topMenuItems[0]?.sales || 1)) * 100, 100)}%` 
+                            }}
+                          ></div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                  
+                  {topMenuItems.length === 0 && (
+                    <div className="text-center py-12 text-gray-500">
+                      <div className="text-4xl mb-4">🍽️</div>
+                      <p className="text-lg font-medium">No meal data available</p>
+                      <p className="text-sm">Check your Square API configuration</p>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -739,7 +1009,7 @@ function DashboardPage() {
                         </div>
                         <div className="text-right">
                           <p className="font-bold text-lg text-gray-900 font-['Poppins']">
-                            {formatCurrency((order.totalMoney?.amount || 0) / 100)}
+                            {formatCurrency(order.amount || 0)}
                           </p>
                           <p className="text-sm text-gray-500 bg-gray-200 px-2 py-1 rounded font-medium">
                             {order.state}
@@ -766,10 +1036,10 @@ function DashboardPage() {
                                     </div>
                                     <div className="text-right">
                                       <span className="text-sm font-semibold text-gray-900">
-                                        {formatCurrency((item.price || 0) / 100)}
+                                        {formatCurrency(item.price || 0)}
                                       </span>
                                       <p className="text-xs text-gray-500">
-                                        @ {formatCurrency(item.price / item.quantity)}
+                                        @ {formatCurrency((item.price || 0) / (item.quantity || 1))}
                                       </p>
                                     </div>
                                   </div>

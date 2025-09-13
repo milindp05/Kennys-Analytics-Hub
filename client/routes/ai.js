@@ -1,5 +1,8 @@
 import express from "express"
 import axios from "axios"
+import dotenv from "dotenv"
+
+dotenv.config()
 const router = express.Router()
 
 // AI Chat endpoint
@@ -17,7 +20,7 @@ router.post("/chat", async (req, res) => {
       })
     }
 
-    const openaiApiKey = "api key here"
+    const openaiApiKey = process.env.OPENAI_API_KEY
     console.log("OpenAI API Key exists:", !!openaiApiKey)
     console.log("API Key length:", openaiApiKey?.length)
 
